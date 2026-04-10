@@ -561,6 +561,32 @@
       opacity: 1;
     }
 
+    /* ── USER PICKER ─────────────────────────────────────────────── */
+    #user-picker {
+      position: fixed; inset: 0;
+      background: var(--ink);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2rem; z-index: 9999;
+    }
+    #user-picker h1 { color: var(--gold); font-size: 2.5rem; }
+    #user-picker p { color: var(--slate-light); }
+    .user-cards { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+    .user-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2rem 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      min-width: 160px;
+    }
+    .user-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+    .user-card .avatar { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .user-card .uname { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--parchment); }
+    .user-card .urole { font-size: 0.78rem; color: var(--slate-light); margin-top: 0.25rem; }
+
     /* scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -571,6 +597,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
+
+<!-- ═══ USER PICKER ═══ -->
+<div id="user-picker">
+  <h1>LexEN</h1>
+  <p>請選擇使用者</p>
+  <div class="user-cards" id="user-cards-container">
+    <div style="color:var(--slate-light);">載入中…</div>
+  </div>
+</div>
 
 <!-- ═══ NAV ═══ -->
 <nav>
@@ -916,7 +951,6 @@
 // CONFIG — 填入 API 金鑰後本機測試；部署 Render 請改用後端 proxy
 // ════════════════════════════════════════════════════════════════════════════
 const CONFIG = {
-  GEMINI_API_KEY: 'AIzaSyDXXxYLwUsaTW9yKw9OpTRAf7Ldf74r3M4',            // 填入你的 Gemini API Key
   GEMINI_MODEL:  'gemini-2.5-flash-lite',
   DB_VERSION: 2,
   MASTERED_DAYS: 21,
@@ -944,14 +978,17 @@ const SEED_PASSAGES = [
 // ════════════════════════════════════════════════════════════════════════════
 // GLOBAL STATE
 // ════════════════════════════════════════════════════════════════════════════
-let db;
+let currentUser = null;
 let fcQueue = [];
 let fcIndex = 0;
-let fcIsFlipped = false;
 let quizQueue = [];
 let quizQIndex = 0;
 let rpSelectedWord = null;
 let rpSelectedPassageId = null;
+
+// In-memory cache
+let _cache = { passages: null, vocabulary: null, srs_cards: null, study_log: null };
+const invalidate = () => { _cache = { passages: null, vocabulary: null, srs_cards: null, study_log: null }; };
 
 // ════════════════════════════════════════════════════════════════════════════
 // UTILS
@@ -1023,65 +1060,117 @@ function computeRelated(vocab, targetId, allCards) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// DATABASE
+// API LAYER
 // ════════════════════════════════════════════════════════════════════════════
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('LexEN_v2', CONFIG.DB_VERSION);
-
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('passages')) d.createObjectStore('passages', { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('vocabulary')) {
-        const vs = d.createObjectStore('vocabulary', { keyPath: 'id' });
-        vs.createIndex('by_tag', 'tags', { multiEntry: true });
-      }
-      if (!d.objectStoreNames.contains('srs_cards')) {
-        const ss = d.createObjectStore('srs_cards', { keyPath: 'wordId' });
-        ss.createIndex('by_nextReview', 'nextReview');
-        ss.createIndex('by_status', 'status');
-      }
-      if (!d.objectStoreNames.contains('study_log')) {
-        d.createObjectStore('study_log', { keyPath: 'id', autoIncrement: true });
-      }
-    };
-
-    req.onsuccess = async e => {
-      db = e.target.result;
-      const count = await dbCount('vocabulary');
-      if (count === 0) await seedDB();
-      resolve(db);
-    };
-    req.onerror = () => reject(req.error);
-  });
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok) throw new Error(`API ${path} → ${r.status}`);
+  return r.json();
 }
 
-async function seedDB() {
-  for (const v of SEED_VOCAB) await dbPut('vocabulary', { ...v, createdAt: Date.now() });
-  for (const p of SEED_PASSAGES) await dbPut('passages', p);
-  for (const v of SEED_VOCAB) {
-    await dbPut('srs_cards', {
-      wordId: v.id, status: 'new', interval: 0, easeFactor: 2.5,
-      nextReview: Date.now(), lastReview: null, reps: 0, lapses: 0
-    });
-  }
+async function dbGetAll_passages() {
+  if (_cache.passages) return _cache.passages;
+  const rows = await apiFetch('/api/passages');
+  _cache.passages = rows.map(p => ({
+    id: p.id, year: p.year, exam: p.exam, qNumber: p.q_number,
+    passage: p.passage, choices: p.choices || [], answer: p.answer,
+    subject: p.subject, explanation: p.explanation, createdAt: p.created_at
+  }));
+  return _cache.passages;
+}
+async function dbGet_passage(id) { return (await dbGetAll_passages()).find(p => p.id === id) || null; }
+async function dbPut_passage(p) {
+  await apiFetch('/api/passages', { method: 'POST', body: JSON.stringify({
+    id: p.id, year: p.year, exam: p.exam, q_number: p.qNumber,
+    passage: p.passage, choices: p.choices, answer: p.answer,
+    subject: p.subject, explanation: p.explanation
+  })});
+  _cache.passages = null;
 }
 
-const dbTx = (store, mode) => db.transaction(store, mode).objectStore(store);
-const dbGet = (store, key) => new Promise((res, rej) => { const r = dbTx(store,'readonly').get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-const dbGetAll = store => new Promise((res, rej) => { const r = dbTx(store,'readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-const dbPut = (store, data) => new Promise((res, rej) => { const r = dbTx(store,'readwrite').put(data); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-const dbDelete = (store, key) => new Promise((res, rej) => { const r = dbTx(store,'readwrite').delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
-const dbCount = store => new Promise((res, rej) => { const r = dbTx(store,'readonly').count(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+async function dbGetAll_vocabulary() {
+  if (_cache.vocabulary) return _cache.vocabulary;
+  const rows = await apiFetch('/api/vocabulary');
+  _cache.vocabulary = rows.map(v => ({
+    id: v.id, word: v.word, pos: v.pos, zhTW: v.zh_tw,
+    legalDef: v.legal_def, enDef: v.en_def, tags: v.tags || [],
+    difficulty: v.difficulty, sourceIds: v.source_ids || [],
+    relatedTerms: v.related_terms || [], createdAt: v.created_at
+  }));
+  return _cache.vocabulary;
+}
+async function dbGet_vocab(id) { return (await dbGetAll_vocabulary()).find(v => v.id === id) || null; }
+async function dbPut_vocab(v) {
+  await apiFetch('/api/vocabulary', { method: 'POST', body: JSON.stringify({
+    id: v.id, word: v.word, pos: v.pos, zh_tw: v.zhTW,
+    legal_def: v.legalDef, en_def: v.enDef, tags: v.tags,
+    difficulty: v.difficulty, source_ids: v.sourceIds, related_terms: v.relatedTerms
+  })});
+  _cache.vocabulary = null;
+}
+
+async function dbGetAll_cards() {
+  if (_cache.srs_cards) return _cache.srs_cards;
+  const rows = await apiFetch(`/api/srs_cards/${currentUser.id}`);
+  _cache.srs_cards = rows.map(c => ({
+    wordId: c.word_id, userId: c.user_id, status: c.status,
+    interval: c.interval, easeFactor: c.ease_factor,
+    nextReview: c.next_review ? new Date(c.next_review).getTime() : Date.now(),
+    lastReview: c.last_review ? new Date(c.last_review).getTime() : null,
+    reps: c.reps, lapses: c.lapses
+  }));
+  return _cache.srs_cards;
+}
+async function dbGet_card(wordId) { return (await dbGetAll_cards()).find(c => c.wordId === wordId) || null; }
+async function dbPut_card(c) {
+  await apiFetch('/api/srs_cards', { method: 'POST', body: JSON.stringify({
+    user_id: currentUser.id, word_id: c.wordId, status: c.status,
+    interval: c.interval, ease_factor: c.easeFactor,
+    next_review: new Date(c.nextReview).toISOString(),
+    last_review: c.lastReview ? new Date(c.lastReview).toISOString() : null,
+    reps: c.reps, lapses: c.lapses
+  })});
+  _cache.srs_cards = null;
+}
+
+async function dbGetAll_log() {
+  if (_cache.study_log) return _cache.study_log;
+  const rows = await apiFetch(`/api/study_log/${currentUser.id}`);
+  _cache.study_log = rows.map(l => ({ date: l.date, wordId: l.word_id, rating: l.rating }));
+  return _cache.study_log;
+}
+async function dbPut_log(entry) {
+  await apiFetch('/api/study_log', { method: 'POST', body: JSON.stringify({
+    user_id: currentUser.id, word_id: entry.wordId, date: entry.date, rating: entry.rating
+  })});
+  _cache.study_log = null;
+}
+
+const dbGet = async (store, key) => {
+  if (store === 'passages')   return dbGet_passage(key);
+  if (store === 'vocabulary') return dbGet_vocab(key);
+  if (store === 'srs_cards')  return dbGet_card(key);
+  return null;
+};
+const dbGetAll = async (store) => {
+  if (store === 'passages')   return dbGetAll_passages();
+  if (store === 'vocabulary') return dbGetAll_vocabulary();
+  if (store === 'srs_cards')  return dbGetAll_cards();
+  if (store === 'study_log')  return dbGetAll_log();
+  return [];
+};
+const dbPut = async (store, data) => {
+  if (store === 'passages')   return dbPut_passage(data);
+  if (store === 'vocabulary') return dbPut_vocab(data);
+  if (store === 'srs_cards')  return dbPut_card(data);
+  if (store === 'study_log')  return dbPut_log(data);
+};
 
 async function getDueCards() {
-  return new Promise((res, rej) => {
-    const idx = dbTx('srs_cards','readonly').index('by_nextReview');
-    const r = idx.getAll(IDBKeyRange.upperBound(Date.now()));
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
+  const cards = await dbGetAll_cards();
+  return cards.filter(c => c.nextReview <= Date.now());
 }
+
 
 // ════════════════════════════════════════════════════════════════════════════
 // SRS ALGORITHM
@@ -2193,15 +2282,52 @@ async function confirmImport() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// USER PICKER
+// ════════════════════════════════════════════════════════════════════════════
+async function showUserPicker() {
+  const users = await apiFetch('/api/users');
+  const avatars = { bingchen: '👨‍⚖️', jiayu: '👩‍⚖️', guest: '👤' };
+  $('user-cards-container').innerHTML = users.map(u => `
+    <div class="user-card" onclick="selectUser('${u.id}', '${u.name}', ${u.is_guest})">
+      <div class="avatar">${avatars[u.id] || '👤'}</div>
+      <div class="uname">${u.name}</div>
+      <div class="urole">${u.is_guest ? '訪客' : '學員'}</div>
+    </div>
+  `).join('');
+}
+
+async function selectUser(id, name, isGuest) {
+  currentUser = { id, name, is_guest: isGuest };
+  localStorage.setItem('lexen_user', id);
+  $('user-picker').style.display = 'none';
+
+  // Update nav to show current user
+  const userBtn = document.createElement('button');
+  userBtn.className = 'btn btn-ghost btn-sm';
+  userBtn.textContent = name;
+  userBtn.onclick = () => { $('user-picker').style.display = 'flex'; showUserPicker(); };
+  document.querySelector('.nav-right').prepend(userBtn);
+
+  await renderHome();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // BOOT
 // ════════════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    await initDB();
-    await renderHome();
+    await showUserPicker();
+
+    // Auto-login if previously selected
+    const savedUser = localStorage.getItem('lexen_user');
+    if (savedUser) {
+      const users = await apiFetch('/api/users');
+      const u = users.find(x => x.id === savedUser);
+      if (u) { await selectUser(u.id, u.name, u.is_guest); return; }
+    }
   } catch(e) {
     console.error('Init error:', e);
-    showToast('初始化失敗：' + e.message);
+    $('user-cards-container').innerHTML = `<p style="color:var(--rust)">連線失敗：${e.message}</p>`;
   }
 });
 
