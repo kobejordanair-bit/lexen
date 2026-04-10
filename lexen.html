@@ -1264,15 +1264,10 @@ async function renderHome() {
   const learning = cards.filter(c => c.status === 'learning' || c.status === 'new').length;
   const mastered = cards.filter(c => c.status === 'mastered').length;
 
-  let unlocked = 0;
-  for (const p of passages) {
-    if (await isPassageUnlocked(p.id, vocab, cards)) unlocked++;
-  }
 
   $('stat-due').textContent      = due;
   $('stat-learning').textContent = learning;
   $('stat-mastered').textContent = mastered;
-  $('stat-unlocked').textContent = unlocked;
   $('nav-total').textContent     = vocab.length;
 
   // streak
