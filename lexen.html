@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LexEN 法學英文備考系統</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Noto+Serif+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0f0d0a;
+      --ink-2: #1a1612;
+      --parchment: #f0ead8;
+      --cream: #faf7f0;
+      --gold: #c9a84c;
+      --gold-dim: rgba(201,168,76,0.15);
+      --gold-dark: #8b6914;
+      --rust: #b84c2a;
+      --slate: #3d4a5c;
+      --slate-light: #6a7a8f;
+      --teal: #2a6b6b;
+      --teal-light: #4a9b9b;
+      --border: rgba(201,168,76,0.18);
+      --success: #4a8f5a;
+      --danger: #b84c2a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ink);
+      color: var(--parchment);
+      font-family: 'Noto Serif TC', serif;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background-image: 
+        radial-gradient(ellipse at 20% 50%, rgba(201,168,76,0.03) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(42,107,107,0.04) 0%, transparent 50%);
+    }
+
+    h1, h2, h3, .display { font-family: 'Playfair Display', serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── NAV ─────────────────────────────────────────────────────── */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 1.5rem;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15,13,10,0.97);
+      backdrop-filter: blur(8px);
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      margin-right: 2rem;
+      flex-shrink: 0;
+    }
+
+    .nav-tabs { display: flex; gap: 0; flex: 1; }
+
+    .nav-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--slate-light);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 0 1rem;
+      height: 55px;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .nav-tab:hover { color: var(--parchment); }
+    .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-stat {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--slate-light);
+    }
+    .nav-stat strong { color: var(--parchment); }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────── */
+    main { flex: 1; overflow: hidden; position: relative; }
+
+    .screen {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+      padding: 1.75rem 2rem;
+    }
+    .screen.active { display: block; }
+    .screen-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* ── COMPONENTS ──────────────────────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: var(--gold);
+      color: var(--ink);
+      border: none;
+      padding: 0.6rem 1.25rem;
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { background: var(--slate); cursor: not-allowed; opacity: 0.4; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--parchment); }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+    .btn-danger { background: var(--rust); color: white; }
+    .btn-success { background: var(--teal); color: white; }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-new      { background: rgba(106,122,143,0.2); color: var(--slate-light); }
+    .badge-learning { background: rgba(201,168,76,0.15); color: var(--gold); }
+    .badge-review   { background: rgba(42,107,107,0.15); color: var(--teal-light); }
+    .badge-mastered { background: rgba(74,143,90,0.15); color: #7abf7a; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+    /* ── FORM ELEMENTS ───────────────────────────────────────────── */
+    input[type="text"], input[type="number"], select, textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,168,76,0.2);
+      color: var(--parchment);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.9rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+    textarea { resize: vertical; min-height: 180px; }
+    select option { background: var(--ink-2); }
+
+    /* ── HOME SCREEN ─────────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .stat-box {
+      text-align: center;
+      padding: 1.25rem;
+    }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 0.35rem;
+    }
+    .stat-label { color: var(--slate-light); font-size: 0.85rem; }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .action-card {
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      text-align: center;
+      padding: 1.5rem;
+    }
+    .action-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+    .action-card h3 { color: var(--parchment); margin-bottom: 0.4rem; }
+    .action-card p { color: var(--slate-light); font-size: 0.85rem; }
+    .action-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .action-card.disabled { opacity: 0.4; cursor: not-allowed; }
+    .action-card.disabled:hover { transform: none; border-color: var(--border); }
+
+    .recent-scroll { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; }
+    .recent-scroll::-webkit-scrollbar { height: 4px; }
+    .recent-scroll::-webkit-scrollbar-track { background: transparent; }
+    .recent-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .word-chip {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.6rem 0.9rem;
+      min-width: 160px;
+    }
+    .word-chip .w { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--gold); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .word-chip .zh { font-size: 0.8rem; color: var(--slate-light); }
+
+    /* ── FLASHCARD SCREEN ────────────────────────────────────────── */
+    #screen-flashcard { display: none; }
+    #screen-flashcard.active { display: flex; flex-direction: column; }
+    .fc-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 1.75rem 2rem;
+      gap: 1.25rem;
+      overflow-y: auto;
+    }
+    .fc-progress-outer { width: 100%; max-width: 620px; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+    .fc-progress-inner { height: 100%; background: var(--gold); transition: width 0.4s ease; }
+    .fc-meta { width: 100%; max-width: 620px; display: flex; justify-content: space-between; align-items: center; }
+    .fc-counter { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--slate-light); }
+
+    .fc-card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--cream);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      position: relative;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .fc-source-tag {
+      position: absolute;
+      top: 1rem; left: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--slate);
+      background: rgba(0,0,0,0.06);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .fc-lapses-tag {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--rust);
+    }
+    .fc-word { font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 0.3rem; color: var(--ink); }
+    .fc-pos { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--teal); margin-bottom: 1.25rem; }
+    .fc-context { font-style: italic; color: var(--slate); font-size: 0.9rem; line-height: 1.7; }
+
+    .fc-divider { border: none; border-top: 1px solid rgba(0,0,0,0.12); margin: 1.25rem 0; width: 100%; }
+    .fc-zh { font-size: 1.5rem; font-weight: 700; color: var(--rust); margin-bottom: 0.75rem; }
+    .fc-def { color: var(--slate); font-size: 0.9rem; line-height: 1.7; text-align: left; width: 100%; }
+
+    .fc-related { width: 100%; max-width: 620px; }
+    .fc-related h4 { font-size: 0.8rem; color: var(--slate-light); margin-bottom: 0.6rem; font-family: 'JetBrains Mono', monospace; font-weight: normal; }
+    .fc-related-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .related-chip {
+      background: rgba(201,168,76,0.1);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .related-chip:hover { background: rgba(201,168,76,0.2); }
+    .related-chip .rt { font-size: 0.65rem; color: var(--slate-light); margin-left: 4px; }
+
+    .fc-buttons { width: 100%; max-width: 620px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
+    .fc-btn {
+      padding: 0.9rem 0.5rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    }
+    .fc-btn:active { transform: scale(0.96); }
+    .fc-btn:hover { filter: brightness(1.12); }
+    .fc-btn small { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; opacity: 0.75; font-weight: normal; }
+    .fc-btn.again { background: #c0392b; color: white; }
+    .fc-btn.seen  { background: #7f8c8d; color: white; }
+    .fc-btn.known { background: var(--teal); color: white; }
+
+    .fc-flip-hint {
+      color: var(--slate-light);
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: color 0.2s;
+    }
+    .fc-flip-hint:hover { color: var(--gold); }
+
+    .fc-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+    }
+    .fc-empty h2 { color: var(--gold); }
+    .fc-empty p { color: var(--slate-light); }
+
+    /* ── QUIZ SCREEN ─────────────────────────────────────────────── */
+    .quiz-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .quiz-passage-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.02);
+      transition: border-color 0.2s;
+      cursor: default;
+    }
+    .quiz-passage-row.unlocked { cursor: pointer; }
+    .quiz-passage-row.unlocked:hover { border-color: var(--gold); }
+    .quiz-lock { font-size: 1.1rem; flex-shrink: 0; }
+    .quiz-info { flex: 1; }
+    .quiz-title { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--parchment); margin-bottom: 0.2rem; }
+    .quiz-sub { font-size: 0.8rem; color: var(--slate-light); }
+    .quiz-progress-bar { flex-shrink: 0; width: 120px; }
+    .qp-label { font-size: 0.72rem; color: var(--slate-light); margin-bottom: 3px; font-family: 'JetBrains Mono', monospace; }
+    .qp-track { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+    .qp-fill { height: 100%; background: var(--teal); border-radius: 2px; }
+
+    /* Quiz attempt UI */
+    #quiz-attempt { display: none; }
+    .qa-passage {
+      background: rgba(0,0,0,0.25);
+      border-radius: 6px;
+      padding: 1.25rem;
+      font-size: 1rem;
+      line-height: 1.9;
+      margin-bottom: 1.5rem;
+    }
+    .qa-choices { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+    .qa-choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: 0.95rem;
+    }
+    .qa-choice:hover { border-color: var(--gold); background: var(--gold-dim); }
+    .qa-choice.correct { border-color: var(--success); background: rgba(74,143,90,0.1); }
+    .qa-choice.wrong   { border-color: var(--danger); background: rgba(184,76,42,0.1); }
+    .qa-choice.disabled { cursor: default; pointer-events: none; }
+    .qa-key { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .qa-result { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; display: none; }
+    .qa-result.correct { background: rgba(74,143,90,0.1); border: 1px solid var(--success); color: #7abf7a; }
+    .qa-result.wrong   { background: rgba(184,76,42,0.1); border: 1px solid var(--danger); color: #e07a5f; }
+
+    /* ── READING SCREEN ──────────────────────────────────────────── */
+    #screen-reading.active { display: flex; overflow: hidden; padding: 0; }
+    .reading-left { flex: 1; display: flex; flex-direction: column; padding: 1.75rem 1.5rem 1.75rem 2rem; overflow: hidden; }
+    .reading-right { width: 320px; border-left: 1px solid var(--border); padding: 1.5rem; overflow-y: auto; flex-shrink: 0; }
+    .passage-display {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 2;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-top: 0.75rem;
+    }
+    .w-hl { cursor: pointer; padding: 0 1px; border-radius: 1px; transition: background 0.15s; }
+    .w-hl:hover { background: rgba(255,255,255,0.12); }
+    .w-known    { border-bottom: 2px solid var(--teal); }
+    .w-learning { border-bottom: 2px solid var(--gold); }
+    .w-new      { border-bottom: 1px dotted var(--slate-light); }
+    .w-unknown  { border-bottom: 1px dashed rgba(255,255,255,0.2); cursor: pointer; }
+
+    .panel-empty { color: var(--slate-light); text-align: center; margin-top: 3rem; font-size: 0.9rem; line-height: 1.8; }
+    .panel-word-display h2 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--gold); margin-bottom: 0.25rem; }
+    .panel-word-display .p-pos { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--slate-light); margin-bottom: 1rem; }
+    .panel-word-display .p-zh { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .panel-word-display .p-def { font-size: 0.88rem; color: var(--parchment); line-height: 1.7; margin-bottom: 1rem; }
+    .p-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .p-tag { background: rgba(42,107,107,0.15); color: var(--teal-light); font-size: 0.7rem; padding: 1px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; }
+
+    /* ── VOCAB SCREEN ────────────────────────────────────────────── */
+    .vocab-toolbar { display: flex; gap: 0.75rem; align-items: center; }
+    .vocab-toolbar input { flex: 1; }
+    .vocab-toolbar select { flex: 0 0 140px; }
+
+    .vocab-table-wrap { overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; flex: 1; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      color: var(--slate-light);
+      border-bottom: 1px solid var(--border);
+      font-weight: normal;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      position: sticky; top: 0;
+      background: rgba(15,13,10,0.97);
+    }
+    tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.025); cursor: pointer; }
+    .td-word { font-family: 'JetBrains Mono', monospace; color: var(--gold); }
+    .td-lapses { font-family: 'JetBrains Mono', monospace; }
+    .lapses-high { color: var(--rust); }
+    .lapses-mid  { color: var(--gold); }
+
+    /* ── WEAKNESS SCREEN ─────────────────────────────────────────── */
+    .weakness-header { display: flex; justify-content: space-between; align-items: center; }
+    .weakness-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .weakness-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.02);
+      transition: border-color 0.15s;
+    }
+    .weakness-row:hover { border-color: rgba(184,76,42,0.4); }
+    .w-lapses-badge {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(184,76,42,0.15);
+      border: 1px solid rgba(184,76,42,0.3);
+      color: var(--rust);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    .w-word-info { flex: 1; }
+    .w-word-en { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: var(--gold); }
+    .w-word-zh { font-size: 0.8rem; color: var(--slate-light); margin-top: 0.1rem; }
+
+    /* ── MODAL ───────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--ink-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 { color: var(--gold); margin-bottom: 1.25rem; font-size: 1.2rem; }
+    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .field-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .field-label { font-size: 0.78rem; color: var(--slate-light); margin-bottom: 0.3rem; font-family: 'JetBrains Mono', monospace; }
+
+    .import-format-hint {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--slate-light);
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── WORD DETAIL MODAL ───────────────────────────────────────── */
+    .word-detail-modal { max-width: 480px; }
+    .wdm-word { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
+    .wdm-pos { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--slate-light); margin-bottom: 0.75rem; }
+    .wdm-zh { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.6rem; }
+    .wdm-def { font-size: 0.88rem; line-height: 1.7; color: var(--parchment); margin-bottom: 1rem; }
+    .wdm-section-title { font-size: 0.72rem; color: var(--slate-light); font-family: 'JetBrains Mono', monospace; margin-bottom: 0.5rem; margin-top: 1rem; }
+    .wdm-related { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .wdm-stats { display: flex; gap: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--slate-light); margin-top: 1rem; }
+    .wdm-stats span strong { color: var(--parchment); }
+
+    /* ── LOADER & TOAST ──────────────────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--ink-2);
+      border: 1px solid var(--border);
+      color: var(--parchment);
+      padding: 0.6rem 1.25rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      z-index: 300;
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      white-space: nowrap;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.35); }
+    .selected-choice { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="nav-brand" onclick="switchScreen('home')">LexEN</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-screen="home">主頁</button>
+    <button class="nav-tab" data-screen="flashcard">閃卡複習</button>
+    <button class="nav-tab" data-screen="quiz">做題模式</button>
+    <button class="nav-tab" data-screen="reading">原文閱讀</button>
+    <button class="nav-tab" data-screen="vocab">單字庫</button>
+    <button class="nav-tab" data-screen="weakness">弱點強化</button>
+  </div>
+  <div class="nav-right">
+    <span class="nav-stat">🔥 <strong id="nav-streak">0</strong> 天</span>
+    <span class="nav-stat">📚 <strong id="nav-total">0</strong> 詞</span>
+    <button class="btn btn-sm" onclick="openModal('modal-import')">＋ 匯入題目</button>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main>
+
+  <!-- ── HOME ── -->
+  <div id="screen-home" class="screen active">
+    <div class="screen-inner">
+      <div class="card stats-row" id="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" id="stat-due">—</div>
+          <div class="stat-label">今日待複習</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-learning">—</div>
+          <div class="stat-label">學習中</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-mastered">—</div>
+          <div class="stat-label">已掌握</div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="card action-card" onclick="goFlashcard()">
+          <div class="action-icon">🃏</div>
+          <h3>閃卡複習</h3>
+          <p>今日到期單字間隔複習</p>
+        </div>
+        <div class="card action-card" onclick="switchScreen('quiz')">
+          <div class="action-icon">📝</div>
+          <h3>做題模式</h3>
+          <p>用真實題目驗收學習成果</p>
+        </div>
+        <div class="card action-card" onclick="switchScreen('weakness')">
+          <div class="action-icon">🎯</div>
+          <h3>弱點強化</h3>
+          <p>集中攻克反覆出錯的詞彙</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom: 0.75rem; font-size: 1rem; color: var(--slate-light);">最近加入</h3>
+        <div class="recent-scroll" id="recent-words"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FLASHCARD ── -->
+  <div id="screen-flashcard" class="screen">
+    <div class="fc-wrap" id="fc-wrap">
+      <!-- content injected by JS -->
+    </div>
+  </div>
+
+  <!-- ── QUIZ ── -->
+  <div id="screen-quiz" class="screen">
+    <div class="screen-inner">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>做題模式</h2>
+        <div id="quiz-back-btn" style="display:none;">
+          <button class="btn btn-ghost btn-sm" onclick="exitQuizAttempt()">← 返回題庫</button>
+        </div>
+      </div>
+
+      <!-- list view -->
+      <div id="quiz-list">
+        <div style="display:flex; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+          <div class="card action-card" style="flex:1; min-width:200px;" onclick="startMockExam()">
+            <div class="action-icon">🎓</div>
+            <h3>模擬考試</h3>
+            <p>隨機抽15題，記錄作答時間</p>
+          </div>
+          <div class="card" style="flex:2; min-width:260px;">
+            <p style="color:var(--slate-light); font-size:0.85rem; margin-bottom:0.75rem;">單題練習 — 圓圈表示未學習，百分比表示學習進度，✓ 表示全部看過</p>
+            <div class="quiz-list" id="quiz-passage-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- mock exam view -->
+      <div id="mock-exam-view" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <div>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:0.85rem; color:var(--slate-light);">
+              第 <strong id="mock-qnum" style="color:var(--parchment);">1</strong> / <span id="mock-total">15</span> 題
+            </span>
+          </div>
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--gold);" id="mock-timer">00:00</span>
+            <button class="btn btn-ghost btn-sm" onclick="abandonMock()">放棄考試</button>
+          </div>
+        </div>
+        <div class="fc-progress-outer" style="margin-bottom:1.25rem;">
+          <div class="fc-progress-inner" id="mock-progress" style="width:0%"></div>
+        </div>
+        <div class="card" id="mock-card">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--slate-light); margin-bottom:0.75rem;" id="mock-meta"></div>
+          <div class="qa-passage" id="mock-passage"></div>
+          <div class="qa-result" id="mock-result" style="display:none;"></div>
+          <div class="qa-choices" id="mock-choices"></div>
+          <div id="mock-next" style="display:none; margin-top:1rem;">
+            <button class="btn" id="mock-next-btn" onclick="mockNextQuestion()">下一題 →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- mock exam result -->
+      <div id="mock-result-view" style="display:none;">
+        <div class="card" style="text-align:center; padding:2rem; margin-bottom:1.25rem;">
+          <div style="font-size:3rem; margin-bottom:0.5rem;" id="mock-score-emoji"></div>
+          <div style="font-family:'Playfair Display',serif; font-size:2.5rem; color:var(--gold); margin-bottom:0.25rem;" id="mock-score"></div>
+          <div style="color:var(--slate-light); margin-bottom:0.5rem;" id="mock-score-label"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:0.85rem; color:var(--slate-light);" id="mock-time-used"></div>
+        </div>
+        <div id="mock-wrong-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+        <div style="display:flex; gap:1rem; margin-top:1.25rem;">
+          <button class="btn btn-ghost" onclick="exitMock()">返回題庫</button>
+          <button class="btn" onclick="startMockExam()">再考一次</button>
+        </div>
+      </div>
+
+      <!-- attempt view -->
+      <div id="quiz-attempt" style="display:none;">
+        <div class="card" id="qa-card">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size:0.78rem; color:var(--slate-light); margin-bottom:0.75rem;" id="qa-meta"></div>
+          <div class="qa-passage" id="qa-passage"></div>
+          <div class="qa-result" id="qa-result"></div>
+          <div class="qa-choices" id="qa-choices"></div>
+          <div id="qa-next" style="display:none;">
+            <button class="btn btn-ghost" onclick="exitQuizAttempt()">返回題庫</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── READING ── -->
+  <div id="screen-reading" class="screen">
+    <div class="reading-left">
+      <select id="reading-select" onchange="loadPassage()" style="max-width: 400px;">
+        <option value="">請選擇題目...</option>
+      </select>
+      <div class="passage-display" id="passage-display">
+        <span style="color:var(--slate-light);">從上方選擇題目後，點擊文中的詞彙查看釋義，或點擊未標記的詞彙進行 AI 即時分析。</span>
+      </div>
+    </div>
+    <div class="reading-right">
+      <div class="panel-empty" id="reading-panel-empty">
+        點擊文章中的詞彙<br>查看釋義或進行分析
+      </div>
+      <div class="panel-word-display" id="reading-panel-content" style="display:none;">
+        <h2 id="rp-word"></h2>
+        <div class="p-pos" id="rp-pos"></div>
+        <div class="p-tags" id="rp-tags"></div>
+        <div class="p-zh" id="rp-zh"></div>
+        <div class="p-def" id="rp-def"></div>
+        <div id="rp-loader" class="spinner" style="margin: 0.5rem 0;"></div>
+        <button class="btn" id="rp-add-btn" style="width:100%; display:none;" onclick="addWordFromPanel()">加入單字本</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VOCAB ── -->
+  <div id="screen-vocab" class="screen">
+    <div class="screen-inner" style="height:100%; padding-bottom:0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <h2>單字庫</h2>
+        <span class="mono" style="font-size:0.8rem; color:var(--slate-light);" id="vocab-count-label"></span>
+      </div>
+      <div class="vocab-toolbar" style="flex-shrink:0;">
+        <input type="text" id="vocab-search" placeholder="搜尋英文或中文…" oninput="renderVocab()">
+        <select id="vocab-filter" onchange="renderVocab()">
+          <option value="all">全部狀態</option>
+          <option value="new">未學習</option>
+          <option value="learning">學習中</option>
+          <option value="review">複習中</option>
+          <option value="mastered">已掌握</option>
+        </select>
+        <select id="vocab-sort" onchange="renderVocab()" style="flex:0 0 120px;">
+          <option value="recent">最新加入</option>
+          <option value="lapses">錯誤次數</option>
+          <option value="alpha">字母排序</option>
+          <option value="due">下次複習</option>
+        </select>
+      </div>
+      <div class="vocab-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>詞彙</th>
+              <th>中文</th>
+              <th>狀態</th>
+              <th>錯誤</th>
+              <th>來源</th>
+              <th>下次複習</th>
+            </tr>
+          </thead>
+          <tbody id="vocab-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WEAKNESS ── -->
+  <div id="screen-weakness" class="screen">
+    <div class="screen-inner">
+      <div class="weakness-header">
+        <div>
+          <h2>弱點強化</h2>
+          <p style="color:var(--slate-light); font-size:0.85rem; margin-top:0.25rem;">依錯誤次數排序，lapses ≥ 2 才列出</p>
+        </div>
+        <button class="btn" onclick="startWeaknessReview()" id="weakness-start-btn">開始集中複習</button>
+      </div>
+      <div class="weakness-list" id="weakness-list"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Import -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:680px;">
+    <!-- Step 1: input -->
+    <div id="import-step1">
+      <h2>匯入題目</h2>
+
+      <!-- PDF upload zone -->
+      <div id="pdf-drop-zone" style="
+        border: 2px dashed rgba(201,168,76,0.3);
+        border-radius: 6px;
+        padding: 1.75rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        margin-bottom: 0.75rem;
+      " onclick="$('pdf-file-input').click()"
+         ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='rgba(201,168,76,0.06)'"
+         ondragleave="this.style.borderColor='rgba(201,168,76,0.3)';this.style.background=''"
+         ondrop="handlePdfDrop(event)">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">📄</div>
+        <div style="color:var(--parchment);margin-bottom:0.25rem;">點擊選擇 PDF 或拖曳至此</div>
+        <div style="font-size:0.78rem;color:var(--slate-light);">系統自動識別法學英文部分（第 56–70 題）</div>
+      </div>
+      <input type="file" id="pdf-file-input" accept=".pdf" style="display:none;" onchange="handlePdfFile(this.files[0])">
+
+      <div id="pdf-file-info" style="display:none;font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--teal-light);margin-bottom:0.75rem;"></div>
+
+      <div class="field-row" style="margin-bottom:0.75rem;">
+        <div style="flex:1;">
+          <div class="field-label">年份（民國）</div>
+          <input type="number" id="import-year" placeholder="例：114" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <div class="field-label">考試別</div>
+          <input type="text" id="import-exam" placeholder="例：律師 / 司法官" style="width:100%;">
+        </div>
+      </div>
+
+      <!-- Manual text fallback -->
+      <details style="margin-bottom:0.75rem;">
+        <summary style="font-size:0.8rem;color:var(--slate-light);cursor:pointer;user-select:none;">或手動貼上文字</summary>
+        <div style="margin-top:0.5rem;">
+          <textarea id="import-textarea" placeholder="直接貼上 PDF 複製的文字，或手動格式化（年份|考試別|題號 → 原文 → 選項，多題以 --- 分隔）…" style="min-height:130px;"></textarea>
+        </div>
+      </details>
+
+      <div id="import-spinner" class="spinner" style="margin:0.5rem 0;"></div>
+      <div id="import-status" style="font-size:0.8rem;color:var(--slate-light);min-height:1.2rem;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import')" id="import-cancel-btn">取消</button>
+        <button class="btn" onclick="processImport()" id="import-submit-btn">AI 分析 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: review & fill answers -->
+    <div id="import-step2" style="display:none;">
+      <h2>確認題目與答案</h2>
+      <div class="field-row" style="margin-bottom:0.75rem;">
+        <div style="flex:1;">
+          <div class="field-label">年份（可修改）</div>
+          <input type="number" id="confirm-year" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <div class="field-label">考試別（可修改）</div>
+          <input type="text" id="confirm-exam" style="width:100%;">
+        </div>
+      </div>
+      <p style="font-size:0.82rem;color:var(--slate-light);margin-bottom:1rem;">
+        確認或修改每題答案後，按「儲存全部」。
+      </p>
+      <div id="import-review-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:55vh;overflow-y:auto;padding-right:0.5rem;"></div>
+      <div id="import-vocab-summary" style="margin-top:0.75rem;padding:0.75rem;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:4px;font-size:0.82rem;color:var(--slate-light);"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="backToStep1()">← 重新貼上</button>
+        <button class="btn" onclick="confirmImport()" id="import-confirm-btn">儲存全部</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Word Detail -->
+<div class="modal-overlay" id="modal-word-detail">
+  <div class="modal word-detail-modal">
+    <div class="wdm-word" id="wdm-word"></div>
+    <div class="wdm-pos" id="wdm-pos"></div>
+    <div class="wdm-zh" id="wdm-zh"></div>
+    <div class="wdm-def" id="wdm-def"></div>
+    <div id="wdm-related-section">
+      <div class="wdm-section-title">相關詞彙</div>
+      <div class="wdm-related" id="wdm-related"></div>
+    </div>
+    <div class="wdm-stats" id="wdm-stats"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-word-detail')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// CONFIG — 填入 API 金鑰後本機測試；部署 Render 請改用後端 proxy
+// ════════════════════════════════════════════════════════════════════════════
+const CONFIG = {
+  GEMINI_API_KEY: 'AIzaSyDXXxYLwUsaTW9yKw9OpTRAf7Ldf74r3M4',            // 填入你的 Gemini API Key
+  GEMINI_MODEL:  'gemini-2.5-flash-lite',
+  DB_VERSION: 2,
+  MASTERED_DAYS: 21,
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// SEED DATA
+// ════════════════════════════════════════════════════════════════════════════
+const SEED_VOCAB = [
+  { word:'vicarious liability', pos:'n. phrase', zhTW:'代理責任', legalDef:'因受僱人或代理人之侵權行為而承擔的責任，毋須自身有過失。', enDef:'Liability imposed on a party for the negligent or wrongful acts of another.', tags:['侵權法'], difficulty:3, sourceIds:['seed-q58'], relatedTerms:[], id:'vicarious-liability' },
+  { word:'strict liability', pos:'n. phrase', zhTW:'嚴格責任', legalDef:'無須證明過失或故意即可成立之責任，強調結果本身。', enDef:'Liability without fault or proof of negligence.', tags:['侵權法'], difficulty:3, sourceIds:['seed-q59'], relatedTerms:[], id:'strict-liability' },
+  { word:'joint and several', pos:'adj.', zhTW:'連帶', legalDef:'指複數債務人各自對全部債務負責，債權人得向任一人請求全額。', enDef:'Each party is independently liable for the full amount.', tags:['民法','侵權法'], difficulty:2, sourceIds:['seed-q56'], relatedTerms:[], id:'joint-and-several' },
+  { word:'promissory estoppel', pos:'n. phrase', zhTW:'允諾禁反言', legalDef:'一方因合理信賴他方之承諾而行動，他方嗣後不得撤回承諾之衡平原則。', enDef:'A doctrine that prevents a promisor from reneging on a promise relied upon.', tags:['契約法'], difficulty:5, sourceIds:['seed-q60'], relatedTerms:[], id:'promissory-estoppel' },
+  { word:'ratification', pos:'n.', zhTW:'追認；批准', legalDef:'事後對他人所為無權代理行為之承認，使其發生效力；亦指立法機關批准行政行為。', enDef:'After-the-fact approval of a previously unauthorized act.', tags:['民法','憲法'], difficulty:3, sourceIds:['seed-q63'], relatedTerms:[], id:'ratification' },
+  { word:'scrutiny', pos:'n.', zhTW:'審查基準', legalDef:'憲法審查中，法院審視政府行為之嚴格程度，分最嚴格、中度、合理審查。', enDef:'The standard of judicial review applied to governmental actions.', tags:['憲法','行政法'], difficulty:4, sourceIds:['seed-q66'], relatedTerms:[], id:'scrutiny' },
+  { word:'trespass', pos:'n.', zhTW:'侵入；非法侵占', legalDef:'未經同意進入他人土地或動產之侵權行為。', enDef:'Unlawful entry onto another\'s property without consent.', tags:['侵權法','物權法'], difficulty:2, sourceIds:['seed-q57'], relatedTerms:[], id:'trespass' },
+  { word:'nuisance', pos:'n.', zhTW:'妨害安寧', legalDef:'非法干擾他人對土地之使用或享受，分公共妨害與私人妨害。', enDef:'Unlawful interference with another\'s use or enjoyment of property.', tags:['侵權法'], difficulty:2, sourceIds:['seed-q57'], relatedTerms:[], id:'nuisance' },
+];
+
+const SEED_PASSAGES = [
+  { id:'seed-q56', year:114, exam:'律師', qNumber:'56', passage:'Under Article 185 of R.O.C. Civil Code, liability is joint and several where the whole or a distinct part of the damage suffered by the victim is attributable to two or more persons.', choices:[{key:'A',text:'joint and several'},{key:'B',text:'discrete'},{key:'C',text:'independent'},{key:'D',text:'increased'}], answer:'A', subject:'民法', createdAt: Date.now() },
+  { id:'seed-q58', year:114, exam:'律師', qNumber:'58', passage:'An employer may be subject to vicarious liability for torts committed by its employees within the scope of their employment, even if the employer was not directly at fault.', choices:[{key:'A',text:'vicarious liability'},{key:'B',text:'strict liability'},{key:'C',text:'contributory negligence'},{key:'D',text:'assumption of risk'}], answer:'A', subject:'侵權法', createdAt: Date.now() },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ════════════════════════════════════════════════════════════════════════════
+let db;
+let fcQueue = [];
+let fcIndex = 0;
+let fcIsFlipped = false;
+let quizQueue = [];
+let quizQIndex = 0;
+let rpSelectedWord = null;
+let rpSelectedPassageId = null;
+
+// ════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const normalizeId = w => w.toLowerCase().replace(/\s+/g,'-').replace(/[^\w-]/g,'');
+const fmtDate = ts => { if (!ts) return '—'; const d = new Date(ts); return `${d.getMonth()+1}/${d.getDate()}`; };
+
+function showToast(msg, duration = 3000) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) =>
+    Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0)
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function isMorphologicallySimilar(w1, w2) {
+  const a = w1.toLowerCase(), b = w2.toLowerCase();
+  if (a === b) return false;
+  const ratio = levenshtein(a, b) / Math.max(a.length, b.length);
+  if (ratio <= 0.3) return true;
+  const wordsA = a.split(/\s+/).filter(w => w.length >= 5);
+  const wordsB = b.split(/\s+/).filter(w => w.length >= 5);
+  return wordsA.some(w => wordsB.includes(w));
+}
+
+// compute all related terms for a word given full vocab list
+function computeRelated(vocab, targetId, allCards) {
+  const target = vocab.find(v => v.id === targetId);
+  if (!target) return [];
+
+  const related = new Map(); // wordId → { word, zhTW, type }
+
+  // 1. AI semantic (stored in relatedTerms field)
+  for (const rt of (target.relatedTerms || [])) {
+    const match = vocab.find(v => v.word.toLowerCase() === rt.toLowerCase() && v.id !== targetId);
+    if (match) related.set(match.id, { word: match.word, zhTW: match.zhTW, type: '語義' });
+  }
+
+  // 2. Co-occurrence (shared sourceId)
+  const targetSources = new Set(target.sourceIds || [target.sourceId].filter(Boolean));
+  for (const v of vocab) {
+    if (v.id === targetId || related.has(v.id)) continue;
+    const vSources = new Set(v.sourceIds || [v.sourceId].filter(Boolean));
+    if ([...targetSources].some(s => vSources.has(s))) {
+      related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '同題' });
+    }
+  }
+
+  // 3. Morphological similarity
+  for (const v of vocab) {
+    if (v.id === targetId || related.has(v.id)) continue;
+    if (isMorphologicallySimilar(target.word, v.word)) {
+      related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '詞形' });
+    }
+  }
+
+  return [...related.entries()].map(([id, info]) => ({ id, ...info })).slice(0, 8);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DATABASE
+// ════════════════════════════════════════════════════════════════════════════
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('LexEN_v2', CONFIG.DB_VERSION);
+
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('passages')) d.createObjectStore('passages', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('vocabulary')) {
+        const vs = d.createObjectStore('vocabulary', { keyPath: 'id' });
+        vs.createIndex('by_tag', 'tags', { multiEntry: true });
+      }
+      if (!d.objectStoreNames.contains('srs_cards')) {
+        const ss = d.createObjectStore('srs_cards', { keyPath: 'wordId' });
+        ss.createIndex('by_nextReview', 'nextReview');
+        ss.createIndex('by_status', 'status');
+      }
+      if (!d.objectStoreNames.contains('study_log')) {
+        d.createObjectStore('study_log', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+
+    req.onsuccess = async e => {
+      db = e.target.result;
+      const count = await dbCount('vocabulary');
+      if (count === 0) await seedDB();
+      resolve(db);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function seedDB() {
+  for (const v of SEED_VOCAB) await dbPut('vocabulary', { ...v, createdAt: Date.now() });
+  for (const p of SEED_PASSAGES) await dbPut('passages', p);
+  for (const v of SEED_VOCAB) {
+    await dbPut('srs_cards', {
+      wordId: v.id, status: 'new', interval: 0, easeFactor: 2.5,
+      nextReview: Date.now(), lastReview: null, reps: 0, lapses: 0
+    });
+  }
+}
+
+const dbTx = (store, mode) => db.transaction(store, mode).objectStore(store);
+const dbGet = (store, key) => new Promise((res, rej) => { const r = dbTx(store,'readonly').get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbGetAll = store => new Promise((res, rej) => { const r = dbTx(store,'readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbPut = (store, data) => new Promise((res, rej) => { const r = dbTx(store,'readwrite').put(data); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbDelete = (store, key) => new Promise((res, rej) => { const r = dbTx(store,'readwrite').delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+const dbCount = store => new Promise((res, rej) => { const r = dbTx(store,'readonly').count(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+
+async function getDueCards() {
+  return new Promise((res, rej) => {
+    const idx = dbTx('srs_cards','readonly').index('by_nextReview');
+    const r = idx.getAll(IDBKeyRange.upperBound(Date.now()));
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SRS ALGORITHM
+// ════════════════════════════════════════════════════════════════════════════
+function srsUpdate(card, rating) {
+  // rating: 'again' | 'seen' | 'known'
+  const DAY = 86400000, now = Date.now();
+
+  if (rating === 'again') {
+    card.lapses++;
+    card.reps = 0;
+    card.interval = 1;
+    card.status = 'learning';
+    card.easeFactor = Math.max(1.3, card.easeFactor - 0.2);
+
+  } else if (rating === 'seen') {
+    // Mark as seen but don't advance interval
+    if (card.status === 'new') { card.status = 'learning'; card.interval = 1; }
+    // re-queue for same interval (no progress)
+
+  } else { // 'known'
+    if (card.reps === 0)      card.interval = 1;
+    else if (card.reps === 1) card.interval = 6;
+    else                      card.interval = Math.round(card.interval * card.easeFactor);
+    card.reps++;
+    card.easeFactor = Math.max(1.3, card.easeFactor + 0.1);
+    if (card.interval >= CONFIG.MASTERED_DAYS) card.status = 'mastered';
+    else if (card.reps >= 2)                   card.status = 'review';
+    else                                        card.status = 'learning';
+  }
+
+  card.lastReview = now;
+  card.nextReview = now + card.interval * DAY;
+  return card;
+}
+
+function previewInterval(card, rating) {
+  const c = { ...card };
+  const updated = srsUpdate(c, rating);
+  if (updated.interval <= 1) return '1 天';
+  return `${updated.interval} 天`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GEMINI API
+// ════════════════════════════════════════════════════════════════════════════
+async function gemini(prompt, retries = 3) {
+  const key = CONFIG.GEMINI_API_KEY;
+  if (!key) throw new Error('請在 CONFIG 中填入 GEMINI_API_KEY');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${key}`;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+        })
+      });
+
+      if (res.status === 503 || res.status === 429) {
+        const wait = (attempt + 1) * 3000;
+        $('import-status').textContent = `伺服器忙碌，${wait/1000} 秒後重試（第 ${attempt+1} 次）…`;
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+
+      if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('API 回傳空內容');
+      return JSON.parse(text.replace(/```json|```/g, '').trim());
+
+    } catch(e) {
+      if (attempt === retries - 1) throw e;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+}
+
+async function batchAnalyze(rawText) {
+  const prompt = `你是台灣律師/司法官考試法學英文專家。
+
+輸入可能是以下任一格式：
+(A) 手動格式：每道題第一行為「年份|考試別|題號」，後接原文、選項、答案，多題以 --- 分隔
+(B) PDF 直貼格式：整份考卷原文，可能混有中文題目，請自動找出英文題目（法學英文部分，通常為題號 56–70）
+
+重要處理規則：
+- 題目原文中的填空（空格）在 PDF 擷取後可能消失或變成空白。請根據選項內容和語意，在 passage 欄位中用 ___ （三條底線）標示填空位置。
+  例如：原文「liability is where」→ 應重建為「liability is ___ where」
+- 若題目為問句（Which of the following...、What is...），則 passage 不需加底線，保留完整句子。
+
+無論哪種格式，請完成以下工作：
+1. 擷取所有英文法學題目的結構，重建填空位置
+2. 從題目中提取重要法學英文詞彙（跳過 the、is、of 等基礎詞）
+3. 對每個詞彙，找出其他詞彙中語義相近的（relatedTerms，填英文原詞）
+
+判斷答案規則：
+- 若文中有明確答案標記（如「答案：A」或「答：(A)」），採用之
+- 若為填空題，根據語意和選項推斷最合理答案
+- 若無法判斷，填 "?"
+
+解析規則：
+- explanation 欄位：先說明正確答案的法律依據（1句），再逐選項說明為何其他選項錯誤（每項1句）
+- 以繁體中文撰寫，語氣精簡直接
+
+嚴格以 JSON 格式回傳，不加任何 markdown 或說明文字：
+{
+  "meta": {"year": 114, "exam": "律師"},
+  "passages": [
+    {
+      "year": 114,
+      "exam": "律師",
+      "qNumber": "56",
+      "passage": "題目原文，填空處用 ___ 標示",
+      "choices": [{"key": "A", "text": "選項文字"}],
+      "answer": "A",
+      "subject": "侵權法"
+      "explanation": "解釋正確答案為何正確（1-2句），並逐一說明其他選項錯誤原因"
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "詞彙原文",
+      "pos": "n. phrase",
+      "zhTW": "繁體中文法律翻譯",
+      "legalDef": "法律定義（繁中2-3句）",
+      "enDef": "English legal definition",
+      "tags": ["領域標籤"],
+      "difficulty": 3,
+      "relatedTerms": ["語義相近詞彙"]
+    }
+  ]
+}
+
+考題原文如下：
+${rawText}`;
+
+  return await gemini(prompt);
+}
+
+async function analyzeWordAI(word, context) {
+  const prompt = `你是台灣律師考試法學英文專家。請分析以下法學詞彙。
+詞彙：${word}
+原文脈絡：${context}
+
+嚴格以 JSON 格式回傳：
+{"word":"${word}","pos":"詞性","zhTW":"繁中法律翻譯","legalDef":"法律定義（繁中）","enDef":"英文定義","tags":["領域"],"difficulty":3,"relatedTerms":[]}`;
+  return await gemini(prompt);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// NAV & SCREEN SWITCHING
+// ════════════════════════════════════════════════════════════════════════════
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  $(`screen-${id}`).classList.add('active');
+  document.querySelector(`.nav-tab[data-screen="${id}"]`)?.classList.add('active');
+
+  if (id === 'home')      renderHome();
+  if (id === 'flashcard') renderFlashcardIdle();
+  if (id === 'quiz')      renderQuizList();
+  if (id === 'reading')   initReading();
+  if (id === 'vocab')     renderVocab();
+  if (id === 'weakness')  renderWeakness();
+}
+
+document.querySelectorAll('.nav-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchScreen(btn.dataset.screen));
+});
+
+function openModal(id)  { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// HOME
+// ════════════════════════════════════════════════════════════════════════════
+async function renderHome() {
+  const [vocab, cards, passages, logs] = await Promise.all([
+    dbGetAll('vocabulary'), dbGetAll('srs_cards'), dbGetAll('passages'), dbGetAll('study_log')
+  ]);
+  const now = Date.now();
+  const due      = cards.filter(c => c.nextReview <= now).length;
+  const learning = cards.filter(c => c.status === 'learning' || c.status === 'new').length;
+  const mastered = cards.filter(c => c.status === 'mastered').length;
+
+  let unlocked = 0;
+  for (const p of passages) {
+    if (await isPassageUnlocked(p.id, vocab, cards)) unlocked++;
+  }
+
+  $('stat-due').textContent      = due;
+  $('stat-learning').textContent = learning;
+  $('stat-mastered').textContent = mastered;
+  $('stat-unlocked').textContent = unlocked;
+  $('nav-total').textContent     = vocab.length;
+
+  // streak
+  const dates = [...new Set(logs.map(l => l.date))].sort().reverse();
+  let streak = 0, check = new Date();
+  for (const ds of dates) {
+    if (new Date(ds).toDateString() === check.toDateString()) {
+      streak++;
+      check.setDate(check.getDate() - 1);
+    } else break;
+  }
+  $('nav-streak').textContent = streak;
+
+  // recent words
+  const recent = [...vocab].sort((a, b) => b.createdAt - a.createdAt).slice(0, 12);
+  $('recent-words').innerHTML = recent.map(v => `
+    <div class="word-chip" onclick="openWordDetail('${v.id}')">
+      <div class="w">${v.word}</div>
+      <div class="zh">${v.zhTW}</div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FLASHCARD
+// ════════════════════════════════════════════════════════════════════════════
+async function renderFlashcardIdle() {
+  const due = await getDueCards();
+  const wrap = $('fc-wrap');
+  if (fcQueue.length > 0 && fcIndex < fcQueue.length) {
+    // session already in progress, just re-render current card
+    renderFC();
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="fc-empty">
+      <div style="font-size:3rem; margin-bottom:1rem;">🃏</div>
+      <h2 style="margin-bottom:0.5rem;">閃卡複習</h2>
+      <p style="margin-bottom:0.35rem;">今日待複習：<strong style="color:var(--gold)">${due.length}</strong> 張</p>
+      <p style="color:var(--slate-light); font-size:0.85rem; margin-bottom:1.5rem;">
+        ${due.length === 0 ? '今日任務已完成，明天繼續！' : '開始複習以維持記憶曲線'}
+      </p>
+      <div style="display:flex;align-items:center;gap:0.75rem;justify-content:center;margin-bottom:1rem;">
+        <label style="font-size:0.85rem;color:var(--slate-light);">每日上限</label>
+        <input type="number" id="fc-daily-limit" value="10" min="1" max="200"
+          style="width:70px;text-align:center;padding:0.4rem;font-family:'JetBrains Mono',monospace;">
+        <span style="font-size:0.85rem;color:var(--slate-light);">張</span>
+      </div>
+      <button class="btn" onclick="goFlashcard()" ${due.length === 0 ? 'disabled' : ''}>開始複習</button>
+    </div>`;
+}
+
+async function goFlashcard() {
+  const due = await getDueCards();
+  if (due.length === 0) { showToast('今日沒有待複習的單字！'); return; }
+  const limit = parseInt($('fc-daily-limit')?.value) || 10;
+  fcQueue = due.slice(0, limit);
+  fcIndex = 0;
+  switchScreen('flashcard');
+  renderFC();
+}
+
+function startWeaknessReview() {
+  // called from weakness screen
+  renderFCFromQueue(fcQueue);
+}
+
+async function renderFCFromQueue(queue) {
+  if (!queue || queue.length === 0) { showToast('沒有可複習的單字'); return; }
+  fcQueue = queue;
+  fcIndex = 0;
+  switchScreen('flashcard');
+  renderFC();
+}
+
+async function renderFC() {
+  const wrap = $('fc-wrap');
+
+  if (fcIndex >= fcQueue.length) {
+    wrap.innerHTML = `
+      <div class="fc-empty">
+        <h2>🎉 本輪複習完成</h2>
+        <p>共複習了 ${fcQueue.length} 個詞彙</p>
+        <button class="btn btn-ghost" onclick="switchScreen('home')">回主頁</button>
+      </div>`;
+    return;
+  }
+
+  const card = fcQueue[fcIndex];
+  const vocab = await dbGet('vocabulary', card.wordId);
+  const allVocab = await dbGetAll('vocabulary');
+  const allCards = await dbGetAll('srs_cards');
+
+  const passageId = (vocab.sourceIds && vocab.sourceIds[0]) || vocab.sourceId;
+  let passage = null;
+  if (passageId) passage = await dbGet('passages', passageId);
+
+  let ctx = '';
+  if (passage) {
+    const sents = passage.passage.split(/(?<=[.?!])\s+/);
+    ctx = sents.find(s => s.toLowerCase().includes(vocab.word.toLowerCase().split(' ')[0])) || passage.passage.slice(0, 200);
+  }
+
+  const related = computeRelated(allVocab, vocab.id, allCards);
+  const progress = Math.round((fcIndex / fcQueue.length) * 100);
+  const lapseTag = card.lapses > 0 ? `<span class="fc-lapses-tag">⚠ ${card.lapses}次錯誤</span>` : '';
+  const relatedHTML = related.length ? `
+    <div class="fc-related">
+      <h4>相關詞彙</h4>
+      <div class="fc-related-list">
+        ${related.map(r => `<span class="related-chip" onclick="openWordDetail('${r.id}')">${r.word} <span class="rt">[${r.type}]</span></span>`).join('')}
+      </div>
+    </div>` : '';
+
+  wrap.innerHTML = `
+    <div class="fc-progress-outer"><div class="fc-progress-inner" style="width:${progress}%"></div></div>
+    <div class="fc-meta">
+      <span class="fc-counter">${fcIndex + 1} / ${fcQueue.length}</span>
+      <span style="font-size:0.8rem; color:var(--slate-light);">${passageId || '手動加入'}</span>
+    </div>
+    <div class="fc-card">
+      <span class="fc-source-tag">${vocab.tags?.join(', ') || ''}</span>
+      ${lapseTag}
+      <h2 class="fc-word">${vocab.word}</h2>
+      <p class="fc-pos">${vocab.pos}</p>
+      <div id="fc-front">
+        ${ctx ? `<p class="fc-context">${ctx.replace(new RegExp(`(${vocab.word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<strong style="color:var(--gold-dark)">$1</strong>')}</p>` : ''}
+        <p class="fc-flip-hint" onclick="flipFC()">▼ 點擊查看答案</p>
+      </div>
+      <div id="fc-back" style="display:none; width:100%;">
+        <hr class="fc-divider">
+        <p class="fc-zh">${vocab.zhTW}</p>
+        <p class="fc-def">${vocab.legalDef}</p>
+      </div>
+    </div>
+    <div id="fc-btns" style="display:none; width:100%; max-width:620px;">
+      <div class="fc-buttons">
+        <button class="fc-btn again" onclick="rateFC('again')">第一次背<small>${previewInterval(card,'again')}</small></button>
+        <button class="fc-btn seen"  onclick="rateFC('seen')">看過<small>原地</small></button>
+        <button class="fc-btn known" onclick="rateFC('known')">熟知<small>${previewInterval(card,'known')}</small></button>
+      </div>
+    </div>
+    ${relatedHTML}
+  `;
+}
+
+function flipFC() {
+  $('fc-front').style.display = 'none';
+  $('fc-back').style.display = 'block';
+  $('fc-btns').style.display = 'block';
+}
+
+async function rateFC(rating) {
+  const card = fcQueue[fcIndex];
+  const updated = srsUpdate({ ...card }, rating);
+  await dbPut('srs_cards', updated);
+  await dbPut('study_log', {
+    date: new Date().toISOString().split('T')[0],
+    wordId: card.wordId,
+    rating,
+  });
+  fcIndex++;
+  renderFC();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MOCK EXAM
+// ════════════════════════════════════════════════════════════════════════════
+let mockQuestions  = [];   // shuffled passages for this session
+let mockIndex      = 0;
+let mockAnswers    = [];   // { passage, chosen, correct }
+let mockTimerStart = 0;
+let mockTimerInterval = null;
+
+function mockShowView(id) {
+  ['quiz-list','mock-exam-view','mock-result-view','quiz-attempt'].forEach(v => {
+    const el = $(v);
+    if (el) el.style.display = v === id ? 'block' : 'none';
+  });
+  $('quiz-back-btn').style.display = id === 'quiz-list' ? 'none' : 'block';
+}
+
+async function startMockExam() {
+  const passages = await dbGetAll('passages');
+  const eligible = passages.filter(p => p.choices && p.choices.length >= 2 && p.answer && p.answer !== '?');
+  if (eligible.length === 0) {
+    showToast('尚無可用題目，請先匯入有選項的考題');
+    return;
+  }
+  // Shuffle and take up to 15
+  const shuffled = eligible.sort(() => Math.random() - 0.5).slice(0, 15);
+  mockQuestions  = shuffled;
+  mockIndex      = 0;
+  mockAnswers    = [];
+
+  // Timer
+  clearInterval(mockTimerInterval);
+  mockTimerStart = Date.now();
+  mockTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - mockTimerStart) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    const el = $('mock-timer');
+    if (el) el.textContent = `${m}:${s}`;
+  }, 1000);
+
+  mockShowView('mock-exam-view');
+  $('quiz-list').style.display = 'none';
+  renderMockQuestion();
+}
+
+async function renderMockQuestion() {
+  const p    = mockQuestions[mockIndex];
+  const total = mockQuestions.length;
+  const pct  = Math.round((mockIndex / total) * 100);
+
+  $('mock-qnum').textContent    = mockIndex + 1;
+  $('mock-total').textContent   = total;
+  $('mock-progress').style.width = `${pct}%`;
+  $('mock-meta').textContent    = `${p.year || '?'}年 ${p.exam || '?'} 第${p.qNumber}題 · ${p.subject || ''}`;
+  $('mock-passage').innerHTML   = p.passage.replace(/___/g, '<u style="color:var(--gold);text-decoration:none;border-bottom:2px solid var(--gold);padding:0 4px;">　　　</u>');
+  $('mock-result').style.display = 'none';
+  $('mock-result').className    = 'qa-result';
+  $('mock-next').style.display  = 'none';
+
+  const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+
+  $('mock-choices').innerHTML = p.choices.map(c => `
+    <div class="qa-choice" onclick="selectMockChoice(this,'${c.key}','${p.answer}','${p.id}')">
+      <span class="qa-key">${c.key}</span>
+      <span>${c.text}</span>
+    </div>
+  `).join('');
+}
+
+async function selectMockChoice(el, chosen, correct, passageId) {
+  document.querySelectorAll('#mock-choices .qa-choice').forEach(c => c.classList.add('disabled'));
+  el.classList.add('selected-choice');
+
+  mockAnswers.push({ passage: mockQuestions[mockIndex], chosen, correct, isCorrect: chosen === correct });
+
+  $('mock-next').style.display = 'block';
+  $('mock-next-btn').textContent = mockIndex + 1 >= mockQuestions.length ? '查看結果' : '下一題 →';
+}
+
+async function mockNextQuestion() {
+  mockIndex++;
+  if (mockIndex >= mockQuestions.length) {
+    await finishMockExam();
+  } else {
+    renderMockQuestion();
+  }
+}
+
+async function finishMockExam() {
+  clearInterval(mockTimerInterval);
+  const elapsed  = Math.floor((Date.now() - mockTimerStart) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+
+  const correct = mockAnswers.filter(a => a.isCorrect).length;
+  const total   = mockAnswers.length;
+  const pct     = Math.round((correct / total) * 100);
+
+  const emoji = pct >= 90 ? '🏆' : pct >= 70 ? '👍' : pct >= 50 ? '📖' : '💪';
+  $('mock-score-emoji').textContent = emoji;
+  $('mock-score').textContent       = `${correct} / ${total}`;
+  $('mock-score-label').textContent = `正確率 ${pct}%`;
+  $('mock-time-used').textContent   = `作答時間：${m}:${s}`;
+
+  // Wrong answers — add to review queue and show list
+  const wrongAnswers = mockAnswers.filter(a => !a.isCorrect);
+  const [allVocab, allCards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+
+  let requeuedCount = 0;
+  const wrongListHTML = [];
+
+  for (const wa of wrongAnswers) {
+    const p  = wa.passage;
+    const pv = allVocab.filter(v => (v.sourceIds || [v.sourceId]).includes(p.id));
+
+    // Penalize: lapses++ and re-queue now
+    for (const v of pv) {
+      const card = allCards.find(c => c.wordId === v.id);
+      if (card) {
+        card.lapses++;
+        card.nextReview = Date.now();
+        await dbPut('srs_cards', card);
+        requeuedCount++;
+      }
+    }
+
+    wrongListHTML.push(`
+      <div style="border:1px solid rgba(184,76,42,0.3);border-radius:5px;padding:0.9rem;background:rgba(184,76,42,0.05);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--slate-light);margin-bottom:0.4rem;">
+          ${p.year||'?'}年 ${p.exam||'?'} 第${p.qNumber}題 · 你選了 <strong style="color:var(--rust);">${wa.chosen}</strong>，正確答案 <strong style="color:#7abf7a;">${wa.correct}</strong>
+        </div>
+        <div style="font-size:0.85rem;line-height:1.6;margin-bottom:0.5rem;">${p.passage}</div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+          ${(p.choices||[]).map(c=>`<span style="font-size:0.73rem;background:${c.key===wa.correct?'rgba(74,143,90,0.15)':c.key===wa.chosen?'rgba(184,76,42,0.15)':'rgba(255,255,255,0.04)'};border:1px solid ${c.key===wa.correct?'var(--success)':c.key===wa.chosen?'var(--danger)':'var(--border)'};border-radius:3px;padding:2px 8px;font-family:'JetBrains Mono',monospace;">${c.key}) ${c.text}</span>`).join('')}
+        </div>
+        ${p.explanation
+          ? `<details style="cursor:pointer;">
+               <summary style="font-size:0.8rem;color:var(--gold);list-style:none;">▶ 查看解析</summary>
+               <div style="margin-top:0.6rem;font-size:0.85rem;line-height:1.7;color:var(--parchment);background:rgba(201,168,76,0.06);border-left:2px solid var(--gold);padding:0.6rem 0.8rem;border-radius:0 4px 4px 0;">${p.explanation}</div>
+             </details>`
+          : `<span style="font-size:0.75rem;color:var(--slate-light);">（此題無解析，重新匯入可取得）</span>`
+        }
+      </div>`);
+  }
+
+  if (wrongAnswers.length === 0) {
+    $('mock-wrong-list').innerHTML = '<div class="card" style="text-align:center;color:var(--teal-light);padding:1.5rem;">🎉 全部答對！</div>';
+  } else {
+    $('mock-wrong-list').innerHTML =
+      `<p style="font-size:0.82rem;color:var(--slate-light);margin-bottom:0.75rem;">答錯 ${wrongAnswers.length} 題，相關詞彙（共 ${requeuedCount} 個）已加入今日複習佇列。</p>` +
+      wrongListHTML.join('');
+  }
+
+  mockShowView('mock-result-view');
+}
+
+function abandonMock() {
+  clearInterval(mockTimerInterval);
+  exitMock();
+}
+
+function exitMock() {
+  clearInterval(mockTimerInterval);
+  mockQuestions = []; mockIndex = 0; mockAnswers = [];
+  renderQuizList();
+}
+
+
+async function isPassageUnlocked(passageId, vocab, cards) {
+  const p = await dbGet('passages', passageId);
+  if (!p || !p.answer || p.answer === '?') return false;
+  
+  // Find the vocab word that matches the correct answer choice text
+  const correctChoice = (p.choices || []).find(c => c.key === p.answer);
+  if (!correctChoice) return false;
+  
+  const correctWord = correctChoice.text.toLowerCase();
+  const matchedVocab = vocab.find(v => 
+    (v.sourceIds || [v.sourceId]).includes(passageId) &&
+    v.word.toLowerCase() === correctWord
+  );
+  
+  if (!matchedVocab) return false;
+  const card = cards.find(c => c.wordId === matchedVocab.id);
+  return card && card.lastReview !== null;
+}
+
+async function renderQuizList() {
+  mockShowView('quiz-list');
+  $('quiz-back-btn').style.display = 'none';
+
+  const [passages, vocab, cards] = await Promise.all([
+    dbGetAll('passages'), dbGetAll('vocabulary'), dbGetAll('srs_cards')
+  ]);
+
+  const list = $('quiz-passage-list');
+  if (passages.length === 0) {
+    list.innerHTML = '<p style="color:var(--slate-light);">尚未匯入任何題目。請點擊右上角「匯入題目」。</p>';
+    return;
+  }
+
+  const rows = await Promise.all(passages.map(async p => {
+    const pv = vocab.filter(v => {
+      if (!(v.sourceIds || [v.sourceId]).includes(p.id)) return false;
+      if (!p.passage) return false;
+      const regex = new RegExp('\\b' + v.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      return regex.test(p.passage);
+    });
+    const seen = pv.filter(v => { const c = cards.find(c => c.wordId === v.id); return c && c.lastReview !== null; });
+    const unlocked = await isPassageUnlocked(p.id, vocab, cards);
+    return { p, pv, seen, unlocked };
+  }));
+
+  list.innerHTML = rows.map(({ p, pv, seen, unlocked }) => {
+    const pct = pv.length ? Math.round((seen.length / pv.length) * 100) : 0;
+    const hasChoices = p.choices && p.choices.length > 0;
+    const statusIcon = pct === 100 ? '✓' : pv.length === 0 ? '○' : `${pct}%`;
+    const statusColor = pct === 100 ? 'var(--teal-light)' : 'var(--slate-light)';
+    return `
+      <div class="quiz-passage-row ${hasChoices ? 'unlocked' : ''}"
+           onclick="${hasChoices ? `startQuiz('${p.id}')` : ''}">
+        <div class="quiz-lock" style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:${statusColor};width:36px;text-align:center;">${statusIcon}</div>
+        <div class="quiz-info">
+          <div class="quiz-title">${p.year}年 ${p.exam} 第${p.qNumber}題</div>
+          <div class="quiz-sub">${p.subject || ''} · ${pv.length} 個關鍵詞彙${!hasChoices ? ' · 無選項' : ''}</div>
+        </div>
+        <div class="quiz-progress-bar">
+          <div class="qp-label">${seen.length}/${pv.length} 詞已看過</div>
+          <div class="qp-track"><div class="qp-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let quizPassageIds = [];
+let quizCurrentPassageIdx = 0;
+
+async function startQuiz(passageId) {
+  $('quiz-list').style.display = 'none';
+  $('quiz-attempt').style.display = 'block';
+  $('quiz-back-btn').style.display = 'block';
+  quizPassageIds = [passageId];
+  quizCurrentPassageIdx = 0;
+  renderQuizQuestion(passageId);
+}
+
+async function renderQuizQuestion(passageId) {
+  const p = await dbGet('passages', passageId);
+  const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+
+  $('qa-meta').textContent = `${p.year}年 ${p.exam} 第${p.qNumber}題 · ${p.subject || ''}`;
+  $('qa-passage').innerHTML = highlightVocabInText(
+      p.passage.replace(/___/g, '<u style="color:var(--gold);border-bottom:2px solid var(--gold);padding:0 4px;">　　　</u>'),
+      vocab, cards
+    );
+  $('qa-result').style.display = 'none';
+  $('qa-result').className = 'qa-result';
+  $('qa-next').style.display = 'none';
+
+  $('qa-choices').innerHTML = p.choices.map(c => `
+    <div class="qa-choice" onclick="selectChoice(this, '${c.key}', '${p.answer}', '${p.id}', '${p.qNumber}')">
+      <span class="qa-key">${c.key}</span>
+      <span>${c.text}</span>
+    </div>
+  `).join('');
+}
+
+function highlightVocabInText(text, vocab, cards) {
+  let result = text;
+  const sorted = [...vocab].sort((a,b) => b.word.length - a.word.length);
+  sorted.forEach(v => {
+    const c = cards.find(x => x.wordId === v.id);
+    const cls = !c || c.status === 'new' ? 'w-new' : (c.status === 'mastered' ? 'w-known' : 'w-learning');
+    result = result.replace(new RegExp(`\\b(${v.word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})\\b`, 'gi'),
+      `<span class="w-hl ${cls}" onclick="openWordDetail('${v.id}')">$1</span>`);
+  });
+  return result;
+}
+
+async function selectChoice(el, chosen, correct, passageId, qNum) {
+  document.querySelectorAll('.qa-choice').forEach(c => c.classList.add('disabled'));
+  const isCorrect = chosen === correct;
+  el.classList.add(isCorrect ? 'correct' : 'wrong');
+
+  if (!isCorrect) {
+    document.querySelectorAll('.qa-choice').forEach(c => {
+      if (c.querySelector('.qa-key').textContent === correct) c.classList.add('correct');
+    });
+    const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+    const pv = vocab.filter(v => (v.sourceIds || [v.sourceId]).includes(passageId));
+    for (const v of pv) {
+      const card = cards.find(c => c.wordId === v.id);
+      if (card) {
+        card.lapses++;
+        card.nextReview = Date.now();
+        await dbPut('srs_cards', card);
+      }
+    }
+  }
+
+  const passage = await dbGet('passages', passageId);
+  const explanationHTML = passage?.explanation
+    ? `<details style="margin-top:0.6rem;cursor:pointer;">
+         <summary style="font-size:0.8rem;color:var(--gold);list-style:none;">▶ 查看解析</summary>
+         <div style="margin-top:0.5rem;font-size:0.85rem;line-height:1.7;background:rgba(201,168,76,0.06);border-left:2px solid var(--gold);padding:0.6rem 0.8rem;border-radius:0 4px 4px 0;">${passage.explanation}</div>
+       </details>`
+    : '';
+
+  const result = $('qa-result');
+  result.style.display = 'block';
+  result.className = `qa-result ${isCorrect ? 'correct' : 'wrong'}`;
+  result.innerHTML = (isCorrect ? '✓ 正確！' : `✗ 答案是 ${correct}。`) + explanationHTML;
+
+  $('qa-next').style.display = 'block';
+  $('qa-next').innerHTML = `<button class="btn btn-ghost" onclick="exitQuizAttempt()">返回題庫</button>`;
+}
+function nextQuizQuestion() { exitQuizAttempt(); }
+function exitQuizAttempt() { renderQuizList(); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// READING
+// ════════════════════════════════════════════════════════════════════════════
+async function initReading() {
+  const passages = await dbGetAll('passages');
+  const sel = $('reading-select');
+  sel.innerHTML = '<option value="">請選擇題目...</option>' +
+    passages.map(p => `<option value="${p.id}">${p.year}年 ${p.exam} 第${p.qNumber}題</option>`).join('');
+}
+
+async function loadPassage() {
+  const id = $('reading-select').value;
+  if (!id) return;
+  rpSelectedPassageId = id;
+
+  const [p, vocab, cards] = await Promise.all([
+    dbGet('passages', id), dbGetAll('vocabulary'), dbGetAll('srs_cards')
+  ]);
+
+  const display = $('passage-display');
+  display.innerHTML = highlightVocabInText(p.passage, vocab, cards);
+
+  // Also allow clicking unknown words
+  wrapUnknownWords(display, id, vocab);
+}
+
+function wrapUnknownWords(container, passageId, knownVocab) {
+  const knownIds = new Set(knownVocab.map(v => v.id));
+
+  function process(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const parts = node.nodeValue.split(/([a-zA-Z'-]+)/);
+      if (parts.length <= 1) return;
+      const frag = document.createDocumentFragment();
+      parts.forEach(part => {
+        if (/^[a-zA-Z'-]+$/.test(part) && part.length > 2) {
+          const span = document.createElement('span');
+          span.textContent = part;
+          span.className = 'w-hl w-unknown';
+          span.onclick = () => analyzeUnknownWord(part, passageId);
+          frag.appendChild(span);
+        } else {
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+      node.parentNode.replaceChild(frag, node);
+    } else if (node.nodeType === Node.ELEMENT_NODE && !node.classList.contains('w-hl')) {
+      Array.from(node.childNodes).forEach(process);
+    }
+  }
+  Array.from(container.childNodes).forEach(process);
+}
+
+async function showReadingPanel(wordId) {
+  const v = await dbGet('vocabulary', wordId);
+  $('reading-panel-empty').style.display = 'none';
+  $('reading-panel-content').style.display = 'block';
+  $('rp-word').textContent = v.word;
+  $('rp-pos').textContent = v.pos;
+  $('rp-zh').textContent = v.zhTW;
+  $('rp-def').textContent = v.legalDef;
+  $('rp-tags').innerHTML = (v.tags||[]).map(t => `<span class="p-tag">${t}</span>`).join('');
+  $('rp-add-btn').style.display = 'none';
+  rpSelectedWord = null;
+}
+
+async function analyzeUnknownWord(word, passageId) {
+  const existing = await dbGet('vocabulary', normalizeId(word));
+  if (existing) { showReadingPanel(existing.id); return; }
+
+  $('reading-panel-empty').style.display = 'none';
+  $('reading-panel-content').style.display = 'block';
+  $('rp-word').textContent = word;
+  $('rp-pos').textContent = 'AI 分析中…';
+  $('rp-zh').textContent = '';
+  $('rp-def').textContent = '';
+  $('rp-tags').innerHTML = '';
+  $('rp-loader').style.display = 'block';
+  $('rp-add-btn').style.display = 'none';
+
+  try {
+    const p = await dbGet('passages', passageId);
+    const ctx = p ? p.passage : '';
+    const result = await analyzeWordAI(word, ctx);
+    $('rp-pos').textContent = result.pos;
+    $('rp-zh').textContent = result.zhTW;
+    $('rp-def').textContent = result.legalDef;
+    $('rp-tags').innerHTML = (result.tags||[]).map(t => `<span class="p-tag">${t}</span>`).join('');
+    rpSelectedWord = { ...result, sourceIds: [passageId], id: normalizeId(result.word), createdAt: Date.now() };
+    $('rp-add-btn').style.display = 'block';
+  } catch(e) {
+    $('rp-pos').textContent = '分析失敗：' + e.message;
+  } finally {
+    $('rp-loader').style.display = 'none';
+  }
+}
+
+async function addWordFromPanel() {
+  if (!rpSelectedWord) return;
+  await dbPut('vocabulary', rpSelectedWord);
+  await dbPut('srs_cards', {
+    wordId: rpSelectedWord.id, status: 'new', interval: 0, easeFactor: 2.5,
+    nextReview: Date.now(), lastReview: null, reps: 0, lapses: 0
+  });
+  showToast('已加入單字本！');
+  $('rp-add-btn').textContent = '✓ 已加入';
+  $('rp-add-btn').disabled = true;
+  rpSelectedWord = null;
+  if (rpSelectedPassageId) loadPassage();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// VOCABULARY TABLE
+// ════════════════════════════════════════════════════════════════════════════
+async function renderVocab() {
+  const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+
+  const search = $('vocab-search').value.toLowerCase();
+  const filter = $('vocab-filter').value;
+  const sort   = $('vocab-sort').value;
+
+  let items = vocab.map(v => {
+    const c = cards.find(x => x.wordId === v.id) || {};
+    return { ...v, _status: c.status || 'new', _lapses: c.lapses || 0, _nextReview: c.nextReview };
+  });
+
+  if (filter !== 'all') items = items.filter(i => i._status === filter);
+  if (search) items = items.filter(i => i.word.toLowerCase().includes(search) || (i.zhTW||'').includes(search));
+
+  if (sort === 'recent')  items.sort((a,b) => b.createdAt - a.createdAt);
+  if (sort === 'lapses')  items.sort((a,b) => b._lapses - a._lapses);
+  if (sort === 'alpha')   items.sort((a,b) => a.word.localeCompare(b.word));
+  if (sort === 'due')     items.sort((a,b) => (a._nextReview||0) - (b._nextReview||0));
+
+  $('vocab-count-label').textContent = `${items.length} / ${vocab.length} 個詞彙`;
+
+  const labels = { new:'未學習', learning:'學習中', review:'複習中', mastered:'已掌握' };
+  $('vocab-tbody').innerHTML = items.map(v => `
+    <tr onclick="openWordDetail('${v.id}')">
+      <td class="td-word">${v.word}</td>
+      <td>${v.zhTW}</td>
+      <td><span class="badge badge-${v._status}">${labels[v._status]}</span></td>
+      <td class="td-lapses ${v._lapses >= 3 ? 'lapses-high' : v._lapses >= 1 ? 'lapses-mid' : ''}">${v._lapses || 0}</td>
+      <td style="font-family:monospace;font-size:0.78rem;color:var(--slate-light);">${(v.sourceIds||[v.sourceId]).filter(Boolean).join(', ') || '—'}</td>
+      <td style="font-family:monospace;font-size:0.78rem;color:var(--slate-light);">${fmtDate(v._nextReview)}</td>
+    </tr>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WEAKNESS
+// ════════════════════════════════════════════════════════════════════════════
+async function renderWeakness() {
+  const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
+
+  const items = vocab
+    .map(v => {
+      const c = cards.find(x => x.wordId === v.id) || {};
+      return { ...v, lapses: c.lapses || 0, card: c };
+    })
+    .filter(v => v.lapses >= 2)
+    .sort((a, b) => b.lapses - a.lapses);
+
+  const list = $('weakness-list');
+  const btn  = $('weakness-start-btn');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="card" style="color:var(--slate-light);text-align:center;padding:2rem;">尚無錯誤 ≥ 2 次的詞彙，繼續加油！</div>';
+    btn.disabled = true;
+    return;
+  }
+
+  btn.disabled = false;
+  // Prepare queue for weakness review
+  fcQueue = items.map(i => i.card).filter(Boolean);
+
+  list.innerHTML = items.map(v => `
+    <div class="weakness-row" onclick="openWordDetail('${v.id}')">
+      <div class="w-lapses-badge">${v.lapses}</div>
+      <div class="w-word-info">
+        <div class="w-word-en">${v.word}</div>
+        <div class="w-word-zh">${v.zhTW} · ${(v.tags||[]).join(', ')}</div>
+      </div>
+      <span class="badge badge-${v.card?.status || 'new'}">${{new:'未學習',learning:'學習中',review:'複習中',mastered:'已掌握'}[v.card?.status||'new']}</span>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WORD DETAIL MODAL
+// ════════════════════════════════════════════════════════════════════════════
+async function openWordDetail(wordId) {
+  const [v, allVocab, allCards] = await Promise.all([
+    dbGet('vocabulary', wordId), dbGetAll('vocabulary'), dbGetAll('srs_cards')
+  ]);
+  if (!v) return;
+  const card = allCards.find(c => c.wordId === wordId) || {};
+  const related = computeRelated(allVocab, wordId, allCards);
+
+  $('wdm-word').textContent = v.word;
+  $('wdm-pos').textContent  = `${v.pos} · ${(v.tags||[]).join(', ')}`;
+  $('wdm-zh').textContent   = v.zhTW;
+  $('wdm-def').textContent  = v.legalDef;
+
+  $('wdm-related').innerHTML = related.length
+    ? related.map(r => `<span class="related-chip" onclick="closeModal('modal-word-detail');setTimeout(()=>openWordDetail('${r.id}'),200)">${r.word} <span class="rt">[${r.type}]</span></span>`).join('')
+    : '<span style="color:var(--slate-light);font-size:0.8rem;">無相關詞彙</span>';
+
+  $('wdm-stats').innerHTML = `
+    <span>錯誤 <strong>${card.lapses||0}</strong> 次</span>
+    <span>複習 <strong>${card.reps||0}</strong> 次</span>
+    <span>間隔 <strong>${card.interval||0}</strong> 天</span>
+    <span>下次 <strong>${fmtDate(card.nextReview)}</strong></span>
+  `;
+
+  openModal('modal-word-detail');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PDF PARSING
+// ════════════════════════════════════════════════════════════════════════════
+let extractedPdfText = '';
+
+function handlePdfDrop(e) {
+  e.preventDefault();
+  const zone = document.getElementById('pdf-drop-zone');
+  zone.style.borderColor = 'rgba(201,168,76,0.3)';
+  zone.style.background  = '';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') handlePdfFile(file);
+  else showToast('請選擇 PDF 檔案');
+}
+
+async function handlePdfFile(file) {
+  if (!file) return;
+  $('pdf-file-info').style.display = 'block';
+  $('pdf-file-info').textContent = `📄 ${file.name}  讀取中…`;
+  $('import-submit-btn').disabled = true;
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    const pdf  = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page    = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      // Join items; add newline when y-position jumps (new line in PDF)
+      let lastY = null;
+      for (const item of content.items) {
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+          fullText += '\n';
+        }
+        fullText += item.str;
+        lastY = item.transform[5];
+      }
+      fullText += '\n';
+    }
+
+    extractedPdfText = fullText;
+
+    // Pre-filter: keep only the portion containing English questions (Q56 onwards)
+    // Look for the first occurrence of "56 " or "56." pattern in English context
+    const engStart = fullText.search(/\b5[6-9]\b.*(?:liability|contract|statute|court|shall|pursuant)/i);
+    if (engStart > 0) {
+      extractedPdfText = fullText.slice(engStart);
+    }
+    $('pdf-file-info').textContent = `✓ ${file.name}  （${pdf.numPages} 頁，${fullText.length} 字元）`;
+    $('import-submit-btn').disabled = false;
+
+  } catch(e) {
+    $('pdf-file-info').textContent = `讀取失敗：${e.message}`;
+    $('pdf-file-info').style.color = 'var(--rust)';
+    console.error(e);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// IMPORT — two-step flow
+// ════════════════════════════════════════════════════════════════════════════
+let importPendingResult = null;
+
+function backToStep1() {
+  $('import-step1').style.display = 'block';
+  $('import-step2').style.display = 'none';
+  importPendingResult = null;
+  extractedPdfText = '';
+  $('pdf-file-info').style.display = 'none';
+  $('pdf-file-info').style.color = 'var(--teal-light)';
+  const fi = $('pdf-file-input');
+  if (fi) fi.value = '';
+}
+
+async function processImport() {
+  const raw = (extractedPdfText || $('import-textarea').value).trim();
+  if (!raw) { showToast('請貼上題目內容'); return; }
+
+  const spinner = $('import-spinner');
+  const status  = $('import-status');
+  const submit  = $('import-submit-btn');
+  const cancel  = $('import-cancel-btn');
+
+  spinner.style.display = 'block';
+  submit.disabled = cancel.disabled = true;
+  status.textContent = 'AI 分析中，請稍候…';
+
+  try {
+    const result = await batchAnalyze(raw);
+    importPendingResult = result;
+    const { passages = [], vocabulary = [], meta = {} } = result;
+
+    // User-provided year/exam takes priority
+    const userYear = $('import-year').value.trim();
+    const userExam = $('import-exam').value.trim();
+    if (userYear) meta.year = parseInt(userYear);
+    if (userExam) meta.exam = userExam;
+
+    if (passages.length === 0) {
+      status.textContent = 'AI 未能識別任何題目，請確認內容後重試。';
+      return;
+    }
+
+    $('import-review-list').innerHTML = passages.map((p, i) => {
+      const year = p.year || meta.year || '?';
+      const exam = p.exam || meta.exam || '?';
+      const choiceKeys = (p.choices||[]).map(c => c.key);
+      const opts = choiceKeys.length
+        ? choiceKeys.map(k => `<option value="${k}" ${p.answer===k?'selected':''}>${k}</option>`).join('')
+        : ['A','B','C','D'].map(k => `<option value="${k}" ${p.answer===k?'selected':''}>${k}</option>`).join('');
+
+      return `
+        <div style="border:1px solid var(--border);border-radius:5px;padding:0.9rem;background:rgba(255,255,255,0.02);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.5rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--slate-light);">
+              ${year}年 ${exam} 第${p.qNumber}題${p.subject ? ' · '+p.subject : ''}
+            </span>
+            <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">
+              <span style="font-size:0.78rem;color:var(--slate-light);">答案</span>
+              <select id="answer-${i}" style="width:68px;padding:0.3rem 0.4rem;font-family:'JetBrains Mono',monospace;font-size:0.9rem;font-weight:700;color:var(--gold);">${opts}</select>
+            </div>
+          </div>
+          <p style="font-size:0.84rem;line-height:1.65;color:var(--parchment);margin-bottom:0.5rem;">${p.passage}</p>
+          ${p.choices && p.choices.length ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+            ${p.choices.map(c=>`<span style="font-size:0.73rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-family:'JetBrains Mono',monospace;">${c.key}) ${c.text}</span>`).join('')}
+          </div>` : ''}
+        </div>`;
+    }).join('');
+
+    $('import-vocab-summary').textContent =
+      `AI 解析出 ${vocabulary.length} 個法學詞彙，儲存後自動加入單字庫。`;
+
+    $('import-step1').style.display = 'none';
+    $('import-step2').style.display = 'block';
+    $('confirm-year').value = meta.year || userYear || '';
+    $('confirm-exam').value = meta.exam || userExam || '';
+
+  } catch (e) {
+    status.textContent = '分析失敗：' + e.message;
+    console.error(e);
+  } finally {
+    spinner.style.display = 'none';
+    submit.disabled = cancel.disabled = false;
+  }
+}
+
+async function confirmImport() {
+  if (!importPendingResult) return;
+  const { passages = [], vocabulary = [], meta = {} } = importPendingResult;
+  const confirmBtn = $('import-confirm-btn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '儲存中…';
+
+  try {
+    let addedP = 0, addedV = 0;
+    const savedIds = [];const savedPassageObjs = [];
+
+    const finalYear = $('confirm-year').value.trim() || meta.year || '?';
+    const finalExam = $('confirm-exam').value.trim() || meta.exam || '?';
+
+    for (let i = 0; i < passages.length; i++) {
+      const p    = passages[i];
+      const year = finalYear;
+      const exam = finalExam;
+      const id   = `import-${year}-${exam}-${p.qNumber}`;
+      const answerEl = document.getElementById(`answer-${i}`);
+      const answer = answerEl ? answerEl.value : (p.answer || '?');
+      const existing = await dbGet('passages', id);
+      if (!existing) {
+        await dbPut('passages', { ...p, id, year, exam, answer, createdAt: Date.now() });
+        addedP++;
+      } else {
+        await dbPut('passages', { ...existing, answer });
+      }
+      savedIds.push(id);
+       savedPassageObjs.push({ ...p, id, year, exam });
+    }
+
+    for (const item of vocabulary) {
+      const wordId  = normalizeId(item.word);
+      const existing = await dbGet('vocabulary', wordId);
+      // Only link vocab to passages where the word actually appears in the text
+      const actualSourceIds = savedPassageObjs
+  .filter(p => {
+    if (!p.passage) return false;
+    const regex = new RegExp('\\b' + item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return regex.test(p.passage);
+  })
+  .map(p => p.id);
+      const finalSourceIds = actualSourceIds.length > 0 ? actualSourceIds : savedIds;
+
+      if (!existing) {
+        await dbPut('vocabulary', { ...item, id: wordId, sourceIds: finalSourceIds, relatedTerms: item.relatedTerms||[], createdAt: Date.now() });
+        await dbPut('srs_cards', { wordId, status:'new', interval:0, easeFactor:2.5, nextReview:Date.now(), lastReview:null, reps:0, lapses:0 });
+        addedV++;
+      } else {
+        const merged = [...new Set([...(existing.sourceIds||[existing.sourceId].filter(Boolean)), ...savedIds])];
+        await dbPut('vocabulary', { ...existing, sourceIds: merged });
+      }
+    }
+
+    showToast(`儲存完成：${addedP} 道題目、${addedV} 個新詞彙`);
+    closeModal('modal-import');
+    backToStep1();
+    $('import-textarea').value = '';
+    renderHome();
+
+  } catch(e) {
+    showToast('儲存失敗：' + e.message);
+    console.error(e);
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = '儲存全部';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await initDB();
+    await renderHome();
+  } catch(e) {
+    console.error('Init error:', e);
+    showToast('初始化失敗：' + e.message);
+  }
+});
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
