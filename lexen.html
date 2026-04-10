@@ -1129,14 +1129,9 @@ function previewInterval(card, rating) {
 // GEMINI API
 // ════════════════════════════════════════════════════════════════════════════
 async function gemini(prompt, retries = 3) {
-  const key = CONFIG.GEMINI_API_KEY;
-  if (!key) throw new Error('請在 CONFIG 中填入 GEMINI_API_KEY');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${key}`;
-
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url, {
+      const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1144,21 +1139,17 @@ async function gemini(prompt, retries = 3) {
           generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
         })
       });
-
       if (res.status === 503 || res.status === 429) {
         const wait = (attempt + 1) * 3000;
         $('import-status').textContent = `伺服器忙碌，${wait/1000} 秒後重試（第 ${attempt+1} 次）…`;
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
-
-      if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
-
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new Error('API 回傳空內容');
       return JSON.parse(text.replace(/```json|```/g, '').trim());
-
     } catch(e) {
       if (attempt === retries - 1) throw e;
       await new Promise(r => setTimeout(r, 2000));
