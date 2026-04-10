@@ -88,6 +88,14 @@ async def upsert_srs_card(request: Request):
         r = await client.post(f"{SUPABASE_URL}/rest/v1/srs_cards", headers=h, json=body)
     return JSONResponse(content=r.json(), status_code=r.status_code)
 
+@app.post("/api/srs_cards/batch")
+async def batch_upsert_srs_cards(request: Request):
+    body = await request.json()
+    h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{SUPABASE_URL}/rest/v1/srs_cards", headers=h, json=body)
+    return JSONResponse(content=r.json(), status_code=r.status_code)
+
 # ── Study Log ─────────────────────────────────────────────────────────────────
 @app.get("/api/study_log/{user_id}")
 async def get_study_log(user_id: str):

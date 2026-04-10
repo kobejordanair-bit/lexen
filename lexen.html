@@ -1638,15 +1638,25 @@ async function finishMockExam() {
     const p  = wa.passage;
     const pv = allVocab.filter(v => (v.sourceIds || [v.sourceId]).includes(p.id));
 
-    // Penalize: lapses++ and re-queue now
+    const updates = [];
     for (const v of pv) {
       const card = allCards.find(c => c.wordId === v.id);
       if (card) {
         card.lapses++;
         card.nextReview = Date.now();
-        await dbPut('srs_cards', card);
+        updates.push({
+          user_id: currentUser.id, word_id: card.wordId, status: card.status,
+          interval: card.interval, ease_factor: card.easeFactor,
+          next_review: new Date(card.nextReview).toISOString(),
+          last_review: card.lastReview ? new Date(card.lastReview).toISOString() : null,
+          reps: card.reps, lapses: card.lapses
+        });
         requeuedCount++;
       }
+    }
+    if (updates.length > 0) {
+      await apiFetch('/api/srs_cards/batch', { method: 'POST', body: JSON.stringify(updates) });
+      _cache.srs_cards = null;
     }
 
     wrongListHTML.push(`
@@ -1814,13 +1824,24 @@ async function selectChoice(el, chosen, correct, passageId, qNum) {
     });
     const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
     const pv = vocab.filter(v => (v.sourceIds || [v.sourceId]).includes(passageId));
+    const updates = [];
     for (const v of pv) {
       const card = cards.find(c => c.wordId === v.id);
       if (card) {
         card.lapses++;
         card.nextReview = Date.now();
-        await dbPut('srs_cards', card);
+        updates.push({
+          user_id: currentUser.id, word_id: card.wordId, status: card.status,
+          interval: card.interval, ease_factor: card.easeFactor,
+          next_review: new Date(card.nextReview).toISOString(),
+          last_review: card.lastReview ? new Date(card.lastReview).toISOString() : null,
+          reps: card.reps, lapses: card.lapses
+        });
       }
+    }
+    if (updates.length > 0) {
+      await apiFetch('/api/srs_cards/batch', { method: 'POST', body: JSON.stringify(updates) });
+      _cache.srs_cards = null;
     }
   }
 
