@@ -7,7 +7,7 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 GEMINI_KEY   = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "	gemini-3-flash-preview")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
