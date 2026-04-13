@@ -2329,6 +2329,24 @@ async function selectUser(id, name, isGuest) {
   userBtn.onclick = () => { $('user-picker').style.display = 'flex'; showUserPicker(); };
   document.querySelector('.nav-right').prepend(userBtn);
 
+  // 補建該使用者缺少的 srs_cards
+  const [vocab, cards] = await Promise.all([dbGetAll_vocabulary(), dbGetAll_cards()]);
+  const missing = vocab.filter(v => !cards.find(c => c.wordId === v.id));
+  if (missing.length > 0) {
+    const newCards = missing.map(v => ({
+      user_id: currentUser.id,
+      word_id: v.id,
+      status: 'new',
+      interval: 0,
+      ease_factor: 2.5,
+      next_review: new Date().toISOString(),
+      last_review: null,
+      reps: 0,
+      lapses: 0
+    }));
+    await apiFetch('/api/srs_cards/batch', { method: 'POST', body: JSON.stringify(newCards) });
+    _cache.srs_cards = null;
+  }
   await renderHome();
 }
 
