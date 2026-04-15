@@ -1407,10 +1407,12 @@ async function translatePassage(passageId) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } })
   });
+  if (!res.ok) throw new Error(`Gemini ${res.status}`);
   const data = await res.json();
   const zhText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
   if (p && zhText) {
-    await dbPut('passages', { ...p, passageZH: zhText });
+    // 嘗試快取到 DB；若 passage_zh 欄位尚未建立則靜默忽略
+    try { await dbPut('passages', { ...p, passageZH: zhText }); } catch(_) {}
   }
   return zhText;
 }
