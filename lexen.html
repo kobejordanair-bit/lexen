@@ -356,6 +356,31 @@
     .related-chip:hover { background: rgba(201,168,76,0.2); }
     .related-chip .rt { font-size: 0.65rem; color: var(--slate-light); margin-left: 4px; }
 
+    .fc-roots { width: 100%; max-width: 620px; }
+    .fc-roots h4 { font-size: 0.8rem; color: var(--slate-light); margin-bottom: 0.6rem; font-family: 'JetBrains Mono', monospace; font-weight: normal; }
+    .root-card {
+      background: rgba(100,180,180,0.06);
+      border: 1px solid rgba(100,180,180,0.18);
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .root-header { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.3rem; }
+    .root-name { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--teal); font-weight: 700; }
+    .root-meaning { font-size: 0.8rem; color: var(--fg); }
+    .root-example { font-size: 0.75rem; color: var(--slate-light); margin-bottom: 0.3rem; font-style: italic; }
+    .root-siblings { font-size: 0.75rem; color: var(--slate-light); display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+    .root-sibling {
+      background: rgba(100,180,180,0.12);
+      border: 1px solid rgba(100,180,180,0.25);
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      color: var(--fg);
+    }
+    .root-sibling:hover { background: rgba(100,180,180,0.25); }
+
     .fc-buttons { width: 100%; max-width: 620px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
     .fc-btn {
       padding: 0.9rem 0.5rem;
@@ -1089,14 +1114,44 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-function isMorphologicallySimilar(w1, w2) {
-  const a = w1.toLowerCase(), b = w2.toLowerCase();
-  if (a === b) return false;
-  const ratio = levenshtein(a, b) / Math.max(a.length, b.length);
-  if (ratio <= 0.3) return true;
-  const wordsA = a.split(/\s+/).filter(w => w.length >= 5);
-  const wordsB = b.split(/\s+/).filter(w => w.length >= 5);
-  return wordsA.some(w => wordsB.includes(w));
+// suffix-based word family (e.g. subjective ↔ objective share -tive)
+const MORPH_SUFFIXES = ['tive','sive','tion','sion','ment','ity','ary','ory','ous','ness','ence','ance','ial','ical'];
+function sameMorphFamily(w1, w2) {
+  const a = w1.toLowerCase().replace(/[^a-z]/g, '');
+  const b = w2.toLowerCase().replace(/[^a-z]/g, '');
+  if (a === b || a.length < 5 || b.length < 5) return false;
+  return MORPH_SUFFIXES.some(suf => a.endsWith(suf) && b.endsWith(suf));
+}
+
+// Legal English roots/affixes for the root-learning panel
+const LEGAL_ROOTS = [
+  { pattern: /^sub/,        root: 'sub-',         meaning: '在下、次要',       example: 'subject, subordinate, submission' },
+  { pattern: /^pro/,        root: 'pro-',         meaning: '向前、代表',       example: 'prosecution, provision, prohibition' },
+  { pattern: /^de/,         root: 'de-',          meaning: '向下、撤銷',       example: 'defendant, defamation, detention' },
+  { pattern: /^pre/,        root: 'pre-',         meaning: '之前、預先',       example: 'presumption, precedent, prejudice' },
+  { pattern: /^con|^com/,   root: 'con-/com-',    meaning: '共同、一起',       example: 'contract, conviction, compensation' },
+  { pattern: /^in|^im/,      root: 'in-/im-',     meaning: '否定、向內',       example: 'injunction, immunity, imprisonment' },
+  { pattern: /^re/,          root: 're-',         meaning: '再次、回',         example: 'remedy, restitution, recidivism' },
+  { pattern: /^ex/,         root: 'ex-',          meaning: '向外、前任',       example: 'extradition, exemption, exhibit' },
+  { pattern: /^ob/,         root: 'ob-',          meaning: '對抗、面對',       example: 'obligation, objection, obstruction' },
+  { pattern: /^trans/,      root: 'trans-',       meaning: '跨越、轉移',       example: 'transfer, transaction, transgression' },
+  { pattern: /^mis/,        root: 'mis-',         meaning: '錯誤、不當',       example: 'misconduct, misrepresentation, mistake' },
+  { pattern: /^mal/,        root: 'mal-',         meaning: '惡意、不良',       example: 'malice, malpractice, malfeasance' },
+  { pattern: /tion$|sion$/, root: '-tion/-sion',  meaning: '行為、狀態（名詞）', example: 'conviction, jurisdiction, provision' },
+  { pattern: /tive$|sive$/, root: '-tive/-sive',  meaning: '具有…性質（形容詞）', example: 'subjective, exclusive, punitive' },
+  { pattern: /ment$/,       root: '-ment',        meaning: '行為結果（名詞）',  example: 'judgment, imprisonment, amendment' },
+  { pattern: /ity$/,        root: '-ity',         meaning: '性質、狀態（名詞）', example: 'liability, immunity, nullity' },
+  { pattern: /ary$|ory$/,   root: '-ary/-ory',   meaning: '有關…的（形容詞/名詞）', example: 'judiciary, statutory, mandatory' },
+  { pattern: /ance$|ence$/, root: '-ance/-ence',  meaning: '狀態、行為（名詞）', example: 'negligence, compliance, evidence' },
+  { pattern: /ous$/,        root: '-ous',         meaning: '充滿…的（形容詞）',  example: 'tortious, fraudulent, malicious' },
+  { pattern: /ness$/,       root: '-ness',        meaning: '狀態、性質（名詞）',  example: 'fairness, willingness, awareness' },
+  { pattern: /ial$|ical$/,  root: '-ial/-ical',   meaning: '與…有關的（形容詞）', example: 'judicial, contractual, juridical' },
+];
+
+function detectRoots(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (w.length < 4) return [];
+  return LEGAL_ROOTS.filter(r => r.pattern.test(w));
 }
 
 // compute all related terms for a word given full vocab list
@@ -1112,25 +1167,15 @@ function computeRelated(vocab, targetId, allCards) {
     if (match) related.set(match.id, { word: match.word, zhTW: match.zhTW, type: '語義' });
   }
 
-  // 2. Co-occurrence (shared sourceId)
-  const targetSources = new Set(target.sourceIds || [target.sourceId].filter(Boolean));
+  // 2. Word family (shared meaningful suffix, e.g. -tive, -tion, -ment)
   for (const v of vocab) {
     if (v.id === targetId || related.has(v.id)) continue;
-    const vSources = new Set(v.sourceIds || [v.sourceId].filter(Boolean));
-    if ([...targetSources].some(s => vSources.has(s))) {
-      related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '同題' });
+    if (sameMorphFamily(target.word, v.word)) {
+      related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '詞族' });
     }
   }
 
-  // 3. Morphological similarity
-  for (const v of vocab) {
-    if (v.id === targetId || related.has(v.id)) continue;
-    if (isMorphologicallySimilar(target.word, v.word)) {
-      related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '詞形' });
-    }
-  }
-
-  // 4. CJK character overlap (≥ 2 shared Chinese characters in zhTW)
+  // 3. CJK character overlap (≥ 2 shared Chinese characters in zhTW)
   const CJK = /[\u4e00-\u9fff]/g;
   const targetChars = new Set((target.zhTW || '').match(CJK) || []);
   if (targetChars.size >= 2) {
@@ -1601,6 +1646,24 @@ async function renderFC() {
       </div>
     </div>` : '';
 
+  const roots = detectRoots(vocab.word);
+  const rootsHTML = roots.length ? `
+    <div class="fc-roots">
+      <h4>字根學習</h4>
+      ${roots.map(r => {
+        const siblings = allVocab
+          .filter(v => v.id !== vocab.id && r.pattern.test(v.word.toLowerCase().replace(/[^a-z]/g,'')))
+          .slice(0, 5)
+          .map(v => `<span class="root-sibling" onclick="openWordDetail('${v.id}')">${v.word}</span>`)
+          .join('');
+        return `<div class="root-card">
+          <div class="root-header"><span class="root-name">${r.root}</span><span class="root-meaning">${r.meaning}</span></div>
+          <div class="root-example">例：${r.example}</div>
+          ${siblings ? `<div class="root-siblings">單字本中：${siblings}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
   wrap.innerHTML = `
     <div class="fc-progress-outer"><div class="fc-progress-inner" style="width:${progress}%"></div></div>
     <div class="fc-meta">
@@ -1630,6 +1693,7 @@ async function renderFC() {
       </div>
     </div>
     ${relatedHTML}
+    ${rootsHTML}
     <div class="fc-recorder" id="fc-recorder">
       <button class="btn btn-ghost btn-sm" id="fc-rec-btn" onclick="toggleRecording()">⏺ 錄音</button>
       <audio id="fc-playback" controls style="flex:1;height:32px;display:none;"></audio>
