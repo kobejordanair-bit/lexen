@@ -1339,7 +1339,7 @@ async function batchAnalyze(rawText) {
       "passage": "題目原文，填空處用 ___ 標示",
       "choices": [{"key": "A", "text": "選項文字"}],
       "answer": "A",
-      "subject": "侵權法"
+      "subject": "侵權法",
       "explanation": "解釋正確答案為何正確（1-2句），並逐一說明其他選項錯誤原因"
     }
   ],
@@ -1603,7 +1603,12 @@ async function startMockExam() {
     return;
   }
   // Shuffle and take up to 15
-  const shuffled = eligible.sort(() => Math.random() - 0.5).slice(0, 15);
+  const arr = [...eligible];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  const shuffled = arr.slice(0, 15);
   mockQuestions  = shuffled;
   mockIndex      = 0;
   mockAnswers    = [];
@@ -1698,14 +1703,14 @@ async function finishMockExam() {
     for (const v of pv) {
       const card = allCards.find(c => c.wordId === v.id);
       if (card) {
-        card.lapses++;
-        card.nextReview = Date.now();
+        const now = Date.now();
+        const updated = { ...card, lapses: card.lapses + 1, nextReview: now };
         updates.push({
-          user_id: currentUser.id, word_id: card.wordId, status: card.status,
-          interval: card.interval, ease_factor: card.easeFactor,
-          next_review: new Date(card.nextReview).toISOString(),
-          last_review: card.lastReview ? new Date(card.lastReview).toISOString() : null,
-          reps: card.reps, lapses: card.lapses
+          user_id: currentUser.id, word_id: updated.wordId, status: updated.status,
+          interval: updated.interval, ease_factor: updated.easeFactor,
+          next_review: new Date(updated.nextReview).toISOString(),
+          last_review: updated.lastReview ? new Date(updated.lastReview).toISOString() : null,
+          reps: updated.reps, lapses: updated.lapses
         });
         requeuedCount++;
       }
@@ -1884,14 +1889,14 @@ async function selectChoice(el, chosen, correct, passageId, qNum) {
     for (const v of pv) {
       const card = cards.find(c => c.wordId === v.id);
       if (card) {
-        card.lapses++;
-        card.nextReview = Date.now();
+        const now = Date.now();
+        const updated = { ...card, lapses: card.lapses + 1, nextReview: now };
         updates.push({
-          user_id: currentUser.id, word_id: card.wordId, status: card.status,
-          interval: card.interval, ease_factor: card.easeFactor,
-          next_review: new Date(card.nextReview).toISOString(),
-          last_review: card.lastReview ? new Date(card.lastReview).toISOString() : null,
-          reps: card.reps, lapses: card.lapses
+          user_id: currentUser.id, word_id: updated.wordId, status: updated.status,
+          interval: updated.interval, ease_factor: updated.easeFactor,
+          next_review: new Date(updated.nextReview).toISOString(),
+          last_review: updated.lastReview ? new Date(updated.lastReview).toISOString() : null,
+          reps: updated.reps, lapses: updated.lapses
         });
       }
     }
@@ -2379,16 +2384,23 @@ function initTheme() {
 // ════════════════════════════════════════════════════════════════════════════
 // USER PICKER
 // ════════════════════════════════════════════════════════════════════════════
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 async function showUserPicker() {
   const users = await apiFetch('/api/users');
   const avatars = { bingchen: '👨‍⚖️', jiayu: '👩‍⚖️', guest: '👤' };
   $('user-cards-container').innerHTML = users.map(u => `
-    <div class="user-card" onclick="selectUser('${u.id}', '${u.name}', ${u.is_guest})">
+    <div class="user-card" data-uid="${escAttr(u.id)}" data-uname="${escAttr(u.name)}" data-guest="${u.is_guest ? '1' : '0'}" onclick="handleUserCardClick(this)">
       <div class="avatar">${avatars[u.id] || '👤'}</div>
-      <div class="uname">${u.name}</div>
+      <div class="uname">${escHTML(u.name)}</div>
       <div class="urole">${u.is_guest ? '訪客' : '學員'}</div>
     </div>
   `).join('');
+}
+
+function handleUserCardClick(el) {
+  selectUser(el.dataset.uid, el.dataset.uname, el.dataset.guest === '1');
 }
 
 async function selectUser(id, name, isGuest) {
