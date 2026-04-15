@@ -384,6 +384,21 @@
     }
     .fc-flip-hint:hover { color: var(--gold); }
 
+    .fc-recorder {
+      width: 100%; max-width: 620px;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.55rem 0.8rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .fc-rec-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--rust); flex-shrink: 0;
+      animation: recPulse 1s ease-in-out infinite;
+    }
+    @keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
     .fc-empty {
       flex: 1;
       display: flex;
@@ -669,7 +684,6 @@
     <button class="nav-tab active" data-screen="home">主頁</button>
     <button class="nav-tab" data-screen="flashcard">閃卡複習</button>
     <button class="nav-tab" data-screen="quiz">做題模式</button>
-    <button class="nav-tab" data-screen="reading">原文閱讀</button>
     <button class="nav-tab" data-screen="vocab">單字庫</button>
     <button class="nav-tab" data-screen="weakness">弱點強化</button>
   </div>
@@ -778,6 +792,10 @@
         <div class="card" id="mock-card">
           <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--slate-light); margin-bottom:0.75rem;" id="mock-meta"></div>
           <div class="qa-passage" id="mock-passage"></div>
+          <div id="mock-translate-row" style="margin-bottom:0.75rem;display:none;">
+            <button class="btn btn-ghost btn-sm" style="font-size:0.82rem;" onclick="togglePassageTranslation('mock')">📖 中文翻譯</button>
+            <div id="mock-translation-panel" style="display:none;margin-top:0.6rem;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:4px;padding:0.75rem;font-size:0.88rem;line-height:1.8;color:var(--parchment);"></div>
+          </div>
           <div class="qa-result" id="mock-result" style="display:none;"></div>
           <div class="qa-choices" id="mock-choices"></div>
           <div id="mock-next" style="display:none; margin-top:1rem;">
@@ -806,38 +824,27 @@
         <div class="card" id="qa-card">
           <div style="font-family: 'JetBrains Mono', monospace; font-size:0.78rem; color:var(--slate-light); margin-bottom:0.75rem;" id="qa-meta"></div>
           <div class="qa-passage" id="qa-passage"></div>
+          <div id="qa-translate-row" style="margin-bottom:0.75rem;display:none;">
+            <button class="btn btn-ghost btn-sm" style="font-size:0.82rem;" onclick="togglePassageTranslation('qa')">📖 中文翻譯</button>
+            <div id="qa-translation-panel" style="display:none;margin-top:0.6rem;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:4px;padding:0.75rem;font-size:0.88rem;line-height:1.8;color:var(--parchment);"></div>
+          </div>
           <div class="qa-result" id="qa-result"></div>
           <div class="qa-choices" id="qa-choices"></div>
           <div id="qa-next" style="display:none;">
             <button class="btn btn-ghost" onclick="exitQuizAttempt()">返回題庫</button>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── READING ── -->
-  <div id="screen-reading" class="screen">
-    <div class="reading-left">
-      <select id="reading-select" onchange="loadPassage()" style="max-width: 400px;">
-        <option value="">請選擇題目...</option>
-      </select>
-      <div class="passage-display" id="passage-display">
-        <span style="color:var(--slate-light);">從上方選擇題目後，點擊文中的詞彙查看釋義，或點擊未標記的詞彙進行 AI 即時分析。</span>
-      </div>
-    </div>
-    <div class="reading-right">
-      <div class="panel-empty" id="reading-panel-empty">
-        點擊文章中的詞彙<br>查看釋義或進行分析
-      </div>
-      <div class="panel-word-display" id="reading-panel-content" style="display:none;">
-        <h2 id="rp-word"></h2>
-        <div class="p-pos" id="rp-pos"></div>
-        <div class="p-tags" id="rp-tags"></div>
-        <div class="p-zh" id="rp-zh"></div>
-        <div class="p-def" id="rp-def"></div>
-        <div id="rp-loader" class="spinner" style="margin: 0.5rem 0;"></div>
-        <button class="btn" id="rp-add-btn" style="width:100%; display:none;" onclick="addWordFromPanel()">加入單字本</button>
+        <div id="quiz-word-panel" class="card" style="display:none;margin-top:0.75rem;">
+          <div id="qwp-empty" style="color:var(--slate-light);font-size:0.88rem;text-align:center;padding:0.5rem;">點擊題目中的詞彙查看詳情</div>
+          <div id="qwp-content" style="display:none;">
+            <h3 id="qwp-word" style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--gold);margin-bottom:0.25rem;"></h3>
+            <div id="qwp-pos" style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--slate-light);margin-bottom:0.5rem;"></div>
+            <div id="qwp-zh" style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;"></div>
+            <div id="qwp-def" style="font-size:0.85rem;line-height:1.7;color:var(--parchment);margin-bottom:0.75rem;"></div>
+            <div id="qwp-loader" class="spinner" style="margin:0.5rem 0;display:none;"></div>
+            <button class="btn btn-sm" id="qwp-add-btn" style="display:none;" onclick="addWordFromQuizPanel()">加入單字本</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -873,6 +880,7 @@
               <th>中文</th>
               <th>狀態</th>
               <th>錯誤</th>
+              <th>題數</th>
               <th>來源</th>
               <th>下次複習</th>
             </tr>
@@ -993,6 +1001,10 @@
       <div class="wdm-section-title">相關詞彙</div>
       <div class="wdm-related" id="wdm-related"></div>
     </div>
+    <div id="wdm-sources-section" style="margin-top:1rem;">
+      <div class="wdm-section-title">出現題目</div>
+      <div id="wdm-sources" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.4rem;"></div>
+    </div>
     <div class="wdm-stats" id="wdm-stats"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-word-detail')">關閉</button>
@@ -1041,6 +1053,11 @@ let quizQueue = [];
 let quizQIndex = 0;
 let rpSelectedWord = null;
 let rpSelectedPassageId = null;
+
+// Recorder state
+let recMediaRecorder = null;
+let recChunks = [];
+let recObjectURL = null;
 
 // In-memory cache
 let _cache = { passages: null, vocabulary: null, srs_cards: null, study_log: null };
@@ -1112,6 +1129,19 @@ function computeRelated(vocab, targetId, allCards) {
     }
   }
 
+  // 4. CJK character overlap (≥ 2 shared Chinese characters in zhTW)
+  const CJK = /[\u4e00-\u9fff]/g;
+  const targetChars = new Set((target.zhTW || '').match(CJK) || []);
+  if (targetChars.size >= 2) {
+    for (const v of vocab) {
+      if (v.id === targetId || related.has(v.id)) continue;
+      const shared = ((v.zhTW || '').match(CJK) || []).filter(c => targetChars.has(c));
+      if (shared.length >= 2) {
+        related.set(v.id, { word: v.word, zhTW: v.zhTW, type: '中文' });
+      }
+    }
+  }
+
   return [...related.entries()].map(([id, info]) => ({ id, ...info })).slice(0, 8);
 }
 
@@ -1130,7 +1160,8 @@ async function dbGetAll_passages() {
   _cache.passages = rows.map(p => ({
     id: p.id, year: p.year, exam: p.exam, qNumber: p.q_number,
     passage: p.passage, choices: p.choices || [], answer: p.answer,
-    subject: p.subject, explanation: p.explanation, createdAt: p.created_at
+    subject: p.subject, explanation: p.explanation,
+    passageZH: p.passage_zh || null, createdAt: p.created_at
   }));
   return _cache.passages;
 }
@@ -1139,7 +1170,8 @@ async function dbPut_passage(p) {
   await apiFetch('/api/passages', { method: 'POST', body: JSON.stringify({
     id: p.id, year: p.year, exam: p.exam, q_number: p.qNumber,
     passage: p.passage, choices: p.choices, answer: p.answer,
-    subject: p.subject, explanation: p.explanation
+    subject: p.subject, explanation: p.explanation,
+    passage_zh: p.passageZH || null
   })});
   _cache.passages = null;
 }
@@ -1303,7 +1335,7 @@ async function gemini(prompt, retries = 3) {
 }
 
 async function batchAnalyze(rawText) {
-  const prompt = `你是台灣律師/司法官考試法學英文專家。
+  const prompt = `你是台灣律師/司法官考試法學英文專家。所有中文翻譯與定義必須嚴格採用現行中華民國法典用語（民法、刑法、刑事訴訟法、民事訴訟法、行政法等），不得使用一般語文翻譯或中國大陸法律用語。
 
 輸入可能是以下任一格式：
 (A) 手動格式：每道題第一行為「年份|考試別|題號」，後接原文、選項、答案，多題以 --- 分隔
@@ -1337,6 +1369,7 @@ async function batchAnalyze(rawText) {
       "exam": "律師",
       "qNumber": "56",
       "passage": "題目原文，填空處用 ___ 標示",
+      "passageZH": "整題繁體中文翻譯（採中華民國法典用語）",
       "choices": [{"key": "A", "text": "選項文字"}],
       "answer": "A",
       "subject": "侵權法",
@@ -1363,8 +1396,47 @@ ${rawText}`;
   return await gemini(prompt);
 }
 
+// ── Passage translation (on-demand, cached in DB) ───────────────────────────
+let _translatePassageId = { qa: null, mock: null };
+
+async function translatePassage(passageId) {
+  const p = await dbGet('passages', passageId);
+  if (p && p.passageZH) return p.passageZH;
+  const prompt = `你是台灣律師考試法學英文專家。請將以下法學英文題目整段翻譯成繁體中文，嚴格採用現行中華民國法典用語，只輸出翻譯結果，不加標題或說明。\n\n${p ? p.passage : ''}`;
+  const res = await fetch('/api/gemini', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } })
+  });
+  const data = await res.json();
+  const zhText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  if (p && zhText) {
+    await dbPut('passages', { ...p, passageZH: zhText });
+  }
+  return zhText;
+}
+
+async function togglePassageTranslation(context) {
+  // context: 'qa' | 'mock'
+  const panelId = `${context}-translation-panel`;
+  const panel = $(panelId);
+  if (!panel) return;
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const passageId = _translatePassageId[context];
+  if (!passageId) return;
+  if (panel.dataset.loadedFor === passageId) return;
+  panel.textContent = '翻譯中…';
+  try {
+    const zh = await translatePassage(passageId);
+    panel.textContent = zh || '（翻譯失敗）';
+    panel.dataset.loadedFor = passageId;
+  } catch(e) {
+    panel.textContent = '翻譯失敗：' + e.message;
+  }
+}
+
 async function analyzeWordAI(word, context) {
-  const prompt = `你是台灣律師考試法學英文專家。請分析以下法學詞彙。
+  const prompt = `你是台灣律師考試法學英文專家。請分析以下法學詞彙。所有中文翻譯與定義必須嚴格採用現行中華民國法典用語（民法、刑法、行政法等現行法典），不得使用一般語文翻譯或中國大陸用語。
 詞彙：${word}
 原文脈絡：${context}
 
@@ -1385,7 +1457,6 @@ function switchScreen(id) {
   if (id === 'home')      renderHome();
   if (id === 'flashcard') renderFlashcardIdle();
   if (id === 'quiz')      renderQuizList();
-  if (id === 'reading')   initReading();
   if (id === 'vocab')     renderVocab();
   if (id === 'weakness')  renderWeakness();
 }
@@ -1556,6 +1627,11 @@ async function renderFC() {
       </div>
     </div>
     ${relatedHTML}
+    <div class="fc-recorder" id="fc-recorder">
+      <button class="btn btn-ghost btn-sm" id="fc-rec-btn" onclick="toggleRecording()">⏺ 錄音</button>
+      <audio id="fc-playback" controls style="flex:1;height:32px;display:none;"></audio>
+      <span id="fc-rec-status" style="font-size:0.75rem;color:var(--slate-light);"></span>
+    </div>
   `;
 }
 
@@ -1565,7 +1641,51 @@ function flipFC() {
   $('fc-btns').style.display = 'block';
 }
 
+async function toggleRecording() {
+  const btn = $('fc-rec-btn');
+  if (!btn) return;
+  if (recMediaRecorder && recMediaRecorder.state === 'recording') {
+    recMediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recChunks = [];
+    recMediaRecorder = new MediaRecorder(stream);
+    recMediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+    recMediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(recChunks, { type: 'audio/webm' });
+      if (recObjectURL) URL.revokeObjectURL(recObjectURL);
+      recObjectURL = URL.createObjectURL(blob);
+      const audio = $('fc-playback');
+      if (audio) { audio.src = recObjectURL; audio.style.display = 'block'; }
+      const b = $('fc-rec-btn');
+      if (b) { b.textContent = '⏺ 重錄'; b.style.background = ''; }
+      const s = $('fc-rec-status');
+      if (s) { s.innerHTML = ''; }
+    };
+    recMediaRecorder.start();
+    btn.textContent = '⏹ 停止';
+    btn.style.background = 'rgba(184,76,42,0.25)';
+    const status = $('fc-rec-status');
+    if (status) status.innerHTML = '<span class="fc-rec-dot"></span> 錄音中';
+    const audio = $('fc-playback');
+    if (audio) audio.style.display = 'none';
+  } catch(e) {
+    showToast('無法存取麥克風：' + e.message);
+  }
+}
+
+function stopRecordingIfActive() {
+  if (recMediaRecorder && recMediaRecorder.state === 'recording') {
+    recMediaRecorder.stop();
+  }
+  recObjectURL = null;
+}
+
 async function rateFC(rating) {
+  stopRecordingIfActive();
   const card = fcQueue[fcIndex];
   const updated = srsUpdate({ ...card }, rating);
   await dbPut('srs_cards', updated);
@@ -1639,6 +1759,10 @@ async function renderMockQuestion() {
   $('mock-progress').style.width = `${pct}%`;
   $('mock-meta').textContent    = `${p.year || '?'}年 ${p.exam || '?'} 第${p.qNumber}題 · ${p.subject || ''}`;
   $('mock-passage').innerHTML   = p.passage.replace(/___/g, '<u style="color:var(--gold);text-decoration:none;border-bottom:2px solid var(--gold);padding:0 4px;">　　　</u>');
+  _translatePassageId['mock'] = p.id;
+  $('mock-translate-row').style.display = 'block';
+  const mtp = $('mock-translation-panel');
+  mtp.style.display = 'none'; mtp.textContent = '';
   $('mock-result').style.display = 'none';
   $('mock-result').className    = 'qa-result';
   $('mock-next').style.display  = 'none';
@@ -1846,10 +1970,24 @@ async function renderQuizQuestion(passageId) {
   const [vocab, cards] = await Promise.all([dbGetAll('vocabulary'), dbGetAll('srs_cards')]);
 
   $('qa-meta').textContent = `${p.year}年 ${p.exam} 第${p.qNumber}題 · ${p.subject || ''}`;
-  $('qa-passage').innerHTML = highlightVocabInText(
+  const passageEl = $('qa-passage');
+  passageEl.innerHTML = highlightVocabInText(
       p.passage.replace(/___/g, '<u style="color:var(--gold);border-bottom:2px solid var(--gold);padding:0 4px;">　　　</u>'),
       vocab, cards
     );
+  wrapUnknownWords(passageEl, passageId, vocab, showQuizWordPanel);
+
+  // 翻譯列
+  _translatePassageId['qa'] = passageId;
+  $('qa-translate-row').style.display = 'block';
+  const tp = $('qa-translation-panel');
+  tp.style.display = 'none'; tp.textContent = '';
+
+  // 詞彙面板
+  $('quiz-word-panel').style.display = 'block';
+  $('qwp-empty').style.display = 'block';
+  $('qwp-content').style.display = 'none';
+
   $('qa-result').style.display = 'none';
   $('qa-result').className = 'qa-result';
   $('qa-next').style.display = 'none';
@@ -1923,7 +2061,11 @@ async function selectChoice(el, chosen, correct, passageId, qNum) {
   $('qa-next').innerHTML = `<button class="btn btn-ghost" onclick="exitQuizAttempt()">返回題庫</button>`;
 }
 function nextQuizQuestion() { exitQuizAttempt(); }
-function exitQuizAttempt() { renderQuizList(); }
+function exitQuizAttempt() {
+  $('quiz-word-panel').style.display = 'none';
+  quizPanelSelectedWord = null;
+  renderQuizList();
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // READING
@@ -1951,7 +2093,7 @@ async function loadPassage() {
   wrapUnknownWords(display, id, vocab);
 }
 
-function wrapUnknownWords(container, passageId, knownVocab) {
+function wrapUnknownWords(container, passageId, knownVocab, onClickFn) {
   const knownIds = new Set(knownVocab.map(v => v.id));
 
   function process(node) {
@@ -1964,7 +2106,9 @@ function wrapUnknownWords(container, passageId, knownVocab) {
           const span = document.createElement('span');
           span.textContent = part;
           span.className = 'w-hl w-unknown';
-          span.onclick = () => analyzeUnknownWord(part, passageId);
+          span.onclick = () => onClickFn
+            ? onClickFn(part, passageId)
+            : analyzeUnknownWord(part, passageId);
           frag.appendChild(span);
         } else {
           frag.appendChild(document.createTextNode(part));
@@ -2036,6 +2180,62 @@ async function addWordFromPanel() {
   if (rpSelectedPassageId) loadPassage();
 }
 
+// ── Quiz word panel (merged reading functionality) ───────────────────────────
+let quizPanelSelectedWord = null;
+
+async function showQuizWordPanel(word, passageId) {
+  const existing = await dbGet('vocabulary', normalizeId(word));
+  $('quiz-word-panel').style.display = 'block';
+  $('qwp-empty').style.display = 'none';
+  $('qwp-content').style.display = 'block';
+  $('qwp-loader').style.display = 'none';
+  $('qwp-add-btn').style.display = 'none';
+  $('qwp-add-btn').disabled = false;
+  $('qwp-add-btn').textContent = '加入單字本';
+  quizPanelSelectedWord = null;
+
+  if (existing) {
+    $('qwp-word').textContent = existing.word;
+    $('qwp-pos').textContent  = existing.pos;
+    $('qwp-zh').textContent   = existing.zhTW;
+    $('qwp-def').textContent  = existing.legalDef;
+    return;
+  }
+
+  $('qwp-word').textContent = word;
+  $('qwp-pos').textContent  = 'AI 分析中…';
+  $('qwp-zh').textContent   = '';
+  $('qwp-def').textContent  = '';
+  $('qwp-loader').style.display = 'block';
+
+  try {
+    const p = await dbGet('passages', passageId);
+    const result = await analyzeWordAI(word, p ? p.passage : '');
+    $('qwp-pos').textContent = result.pos;
+    $('qwp-zh').textContent  = result.zhTW;
+    $('qwp-def').textContent = result.legalDef;
+    quizPanelSelectedWord = { ...result, sourceIds: [passageId], id: normalizeId(result.word), createdAt: Date.now() };
+    $('qwp-add-btn').style.display = 'block';
+  } catch(e) {
+    $('qwp-pos').textContent = '分析失敗：' + e.message;
+  } finally {
+    $('qwp-loader').style.display = 'none';
+  }
+}
+
+async function addWordFromQuizPanel() {
+  if (!quizPanelSelectedWord) return;
+  await dbPut('vocabulary', quizPanelSelectedWord);
+  await dbPut('srs_cards', {
+    wordId: quizPanelSelectedWord.id, status: 'new', interval: 0, easeFactor: 2.5,
+    nextReview: Date.now(), lastReview: null, reps: 0, lapses: 0
+  });
+  showToast('已加入單字本！');
+  $('qwp-add-btn').textContent = '✓ 已加入';
+  $('qwp-add-btn').disabled = true;
+  quizPanelSelectedWord = null;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // VOCABULARY TABLE
 // ════════════════════════════════════════════════════════════════════════════
@@ -2068,6 +2268,7 @@ async function renderVocab() {
       <td>${v.zhTW}</td>
       <td><span class="badge badge-${v._status}">${labels[v._status]}</span></td>
       <td class="td-lapses ${v._lapses >= 3 ? 'lapses-high' : v._lapses >= 1 ? 'lapses-mid' : ''}">${v._lapses || 0}</td>
+      <td style="font-family:monospace;font-size:0.78rem;text-align:center;color:${(v.sourceIds||[]).length > 1 ? 'var(--gold)' : 'var(--slate-light)'};">${(v.sourceIds||[v.sourceId]).filter(Boolean).length || 0}</td>
       <td style="font-family:monospace;font-size:0.78rem;color:var(--slate-light);">${(v.sourceIds||[v.sourceId]).filter(Boolean).join(', ') || '—'}</td>
       <td style="font-family:monospace;font-size:0.78rem;color:var(--slate-light);">${fmtDate(v._nextReview)}</td>
     </tr>
@@ -2139,6 +2340,11 @@ async function openWordDetail(wordId) {
     <span>間隔 <strong>${card.interval||0}</strong> 天</span>
     <span>下次 <strong>${fmtDate(card.nextReview)}</strong></span>
   `;
+
+  const sources = (v.sourceIds || [v.sourceId]).filter(Boolean);
+  $('wdm-sources').innerHTML = sources.length
+    ? sources.map(sid => `<span style="background:rgba(42,107,107,0.15);border:1px solid rgba(42,107,107,0.3);border-radius:4px;padding:0.2rem 0.55rem;font-family:'JetBrains Mono',monospace;font-size:0.72rem;cursor:pointer;color:var(--teal-light);" onclick="closeModal('modal-word-detail');setTimeout(()=>{switchScreen('quiz');startQuiz('${sid}');},200)">${sid}</span>`).join('')
+    : '<span style="font-size:0.8rem;color:var(--slate-light);">無來源資料</span>';
 
   openModal('modal-word-detail');
 }
