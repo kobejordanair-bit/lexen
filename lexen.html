@@ -1058,6 +1058,7 @@ let rpSelectedPassageId = null;
 let recMediaRecorder = null;
 let recChunks = [];
 let recObjectURL = null;
+let recCurrentBlob = null;
 
 // In-memory cache
 let _cache = { passages: null, vocabulary: null, srs_cards: null, study_log: null };
@@ -1632,9 +1633,13 @@ async function renderFC() {
     <div class="fc-recorder" id="fc-recorder">
       <button class="btn btn-ghost btn-sm" id="fc-rec-btn" onclick="toggleRecording()">⏺ 錄音</button>
       <audio id="fc-playback" controls style="flex:1;height:32px;display:none;"></audio>
+      <button class="btn btn-sm" id="fc-save-rec-btn" style="display:none;flex-shrink:0;" onclick="saveRecording('${vocab.id}')">💾 存檔</button>
       <span id="fc-rec-status" style="font-size:0.75rem;color:var(--slate-light);"></span>
     </div>
+    <div id="fc-saved-recordings" style="width:100%;max-width:620px;"></div>
   `;
+  // 載入此單字已存錄音
+  loadRecordingsForWord(vocab.id).then(recs => renderSavedRecordings(recs));
 }
 
 function flipFC() {
@@ -1660,12 +1665,15 @@ async function toggleRecording() {
       const blob = new Blob(recChunks, { type: 'audio/webm' });
       if (recObjectURL) URL.revokeObjectURL(recObjectURL);
       recObjectURL = URL.createObjectURL(blob);
+      recCurrentBlob = blob;
       const audio = $('fc-playback');
       if (audio) { audio.src = recObjectURL; audio.style.display = 'block'; }
       const b = $('fc-rec-btn');
       if (b) { b.textContent = '⏺ 重錄'; b.style.background = ''; }
       const s = $('fc-rec-status');
       if (s) { s.innerHTML = ''; }
+      const saveBtn = $('fc-save-rec-btn');
+      if (saveBtn) { saveBtn.style.display = 'inline-flex'; saveBtn.disabled = false; saveBtn.textContent = '💾 存檔'; }
     };
     recMediaRecorder.start();
     btn.textContent = '⏹ 停止';
@@ -1684,6 +1692,81 @@ function stopRecordingIfActive() {
     recMediaRecorder.stop();
   }
   recObjectURL = null;
+}
+
+// ── Recording persistence ────────────────────────────────────────────────────
+const AVATARS = { bingchen: '👨‍⚖️', jiayu: '👩‍⚖️', guest: '👤' };
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function saveRecording(wordId) {
+  if (!recCurrentBlob) return;
+  const btn = $('fc-save-rec-btn');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+  try {
+    const dataURL = await blobToDataURL(recCurrentBlob);
+    await apiFetch('/api/recordings', {
+      method: 'POST',
+      body: JSON.stringify({
+        word_id: wordId,
+        user_id: currentUser.id,
+        audio_data: dataURL,
+        mime_type: recCurrentBlob.type || 'audio/webm'
+      })
+    });
+    showToast('錄音已儲存！');
+    btn.textContent = '✓ 已儲存';
+    recCurrentBlob = null;
+    const recs = await loadRecordingsForWord(wordId);
+    renderSavedRecordings(recs);
+  } catch(e) {
+    showToast('儲存失敗：' + e.message);
+    btn.disabled = false;
+    btn.textContent = '💾 存檔';
+  }
+}
+
+async function loadRecordingsForWord(wordId) {
+  try {
+    return await apiFetch(`/api/recordings/${wordId}`);
+  } catch(_) { return []; }
+}
+
+function renderSavedRecordings(recs) {
+  const container = $('fc-saved-recordings');
+  if (!container || !recs || recs.length === 0) {
+    if (container) container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    <div style="width:100%;max-width:620px;margin-top:0.5rem;border:1px solid var(--border);border-radius:6px;padding:0.75rem;">
+      <div style="font-size:0.72rem;color:var(--slate-light);margin-bottom:0.6rem;font-family:'JetBrains Mono',monospace;">已儲存的錄音</div>
+      ${recs.map(r => `
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+          <span title="${r.user_id}" style="font-size:1.1rem;flex-shrink:0;">${AVATARS[r.user_id] || '👤'}</span>
+          <audio controls src="${r.audio_data}" style="flex:1;height:28px;"></audio>
+          <span style="font-size:0.7rem;color:var(--slate-light);flex-shrink:0;">${fmtDate(new Date(r.created_at).getTime())}</span>
+          ${r.user_id === currentUser.id
+            ? `<button class="btn btn-ghost btn-sm" style="padding:0.15rem 0.45rem;color:var(--rust);flex-shrink:0;" onclick="deleteRecording('${r.id}','${r.word_id}')">×</button>`
+            : ''}
+        </div>`).join('')}
+    </div>`;
+}
+
+async function deleteRecording(recordingId, wordId) {
+  try {
+    await apiFetch(`/api/recordings/${recordingId}`, { method: 'DELETE' });
+    const recs = await loadRecordingsForWord(wordId);
+    renderSavedRecordings(recs);
+  } catch(e) { showToast('刪除失敗：' + e.message); }
 }
 
 async function rateFC(rating) {

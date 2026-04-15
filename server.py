@@ -114,3 +114,29 @@ async def insert_study_log(request: Request):
     async with httpx.AsyncClient() as client:
         r = await client.post(f"{SUPABASE_URL}/rest/v1/study_log", headers=sb_headers(), json=body)
     return JSONResponse(content=r.json(), status_code=r.status_code)
+
+# ── Recordings ────────────────────────────────────────────────────────────────
+@app.get("/api/recordings/{word_id}")
+async def get_recordings(word_id: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/recordings?word_id=eq.{word_id}&select=*&order=created_at.desc",
+            headers=sb_headers()
+        )
+    return JSONResponse(content=r.json())
+
+@app.post("/api/recordings")
+async def save_recording(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{SUPABASE_URL}/rest/v1/recordings", headers=sb_headers(), json=body)
+    return JSONResponse(content=r.json(), status_code=r.status_code)
+
+@app.delete("/api/recordings/{recording_id}")
+async def delete_recording(recording_id: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.delete(
+            f"{SUPABASE_URL}/rest/v1/recordings?id=eq.{recording_id}",
+            headers=sb_headers()
+        )
+    return JSONResponse(content={}, status_code=204 if r.status_code in (200,204) else r.status_code)
