@@ -21,6 +21,21 @@ def sb_headers():
         "Prefer": "return=representation"
     }
 
+async def sb_request(method: str, path: str, **kwargs):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="Server misconfigured: SUPABASE_URL/SUPABASE_KEY not set")
+    kwargs.setdefault("headers", sb_headers())
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.request(method, f"{SUPABASE_URL}{path}", **kwargs)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Upstream Supabase request failed: {e}")
+    try:
+        content = r.json()
+    except ValueError:
+        content = {"error": "Invalid response from Supabase", "body": r.text}
+    return JSONResponse(content=content, status_code=r.status_code)
+
 # ── Static ──────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
@@ -38,105 +53,70 @@ async def gemini_proxy(request: Request):
 # ── Users ─────────────────────────────────────────────────────────────────────
 @app.get("/api/users")
 async def get_users():
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{SUPABASE_URL}/rest/v1/users?select=*&order=is_guest", headers=sb_headers())
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", "/rest/v1/users?select=*&order=is_guest")
 
 # ── Passages ──────────────────────────────────────────────────────────────────
 @app.get("/api/passages")
 async def get_passages():
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{SUPABASE_URL}/rest/v1/passages?select=*&order=year,q_number", headers=sb_headers())
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", "/rest/v1/passages?select=*&order=year,q_number")
 
 @app.post("/api/passages")
 async def upsert_passage(request: Request):
     body = await request.json()
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/passages", headers=h, json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/passages", headers=h, json=body)
 
 # ── Vocabulary ────────────────────────────────────────────────────────────────
 @app.get("/api/vocabulary")
 async def get_vocabulary():
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{SUPABASE_URL}/rest/v1/vocabulary?select=*&order=created_at.desc", headers=sb_headers())
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", "/rest/v1/vocabulary?select=*&order=created_at.desc")
 
 @app.post("/api/vocabulary")
 async def upsert_vocabulary(request: Request):
     body = await request.json()
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/vocabulary", headers=h, json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/vocabulary", headers=h, json=body)
 
 # ── SRS Cards ─────────────────────────────────────────────────────────────────
 @app.get("/api/srs_cards/{user_id}")
 async def get_srs_cards(user_id: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/srs_cards?user_id=eq.{user_id}&select=*",
-            headers=sb_headers()
-        )
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", f"/rest/v1/srs_cards?user_id=eq.{user_id}&select=*")
 
 @app.post("/api/srs_cards")
 async def upsert_srs_card(request: Request):
     body = await request.json()
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/srs_cards", headers=h, json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/srs_cards", headers=h, json=body)
 
 @app.post("/api/srs_cards/batch")
 async def batch_upsert_srs_cards(request: Request):
     body = await request.json()
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/srs_cards", headers=h, json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/srs_cards", headers=h, json=body)
 
 # ── Study Log ─────────────────────────────────────────────────────────────────
 @app.get("/api/study_log/{user_id}")
 async def get_study_log(user_id: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/study_log?user_id=eq.{user_id}&select=*&order=created_at.desc&limit=500",
-            headers=sb_headers()
-        )
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", f"/rest/v1/study_log?user_id=eq.{user_id}&select=*&order=created_at.desc&limit=500")
 
 @app.post("/api/study_log")
 async def insert_study_log(request: Request):
     body = await request.json()
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/study_log", headers=sb_headers(), json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/study_log", json=body)
 
 # ── Recordings ────────────────────────────────────────────────────────────────
 @app.get("/api/recordings/{word_id}")
 async def get_recordings(word_id: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/recordings?word_id=eq.{word_id}&select=*&order=created_at.desc",
-            headers=sb_headers()
-        )
-    return JSONResponse(content=r.json())
+    return await sb_request("GET", f"/rest/v1/recordings?word_id=eq.{word_id}&select=*&order=created_at.desc")
 
 @app.post("/api/recordings")
 async def save_recording(request: Request):
     body = await request.json()
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{SUPABASE_URL}/rest/v1/recordings", headers=sb_headers(), json=body)
-    return JSONResponse(content=r.json(), status_code=r.status_code)
+    return await sb_request("POST", "/rest/v1/recordings", json=body)
 
 @app.delete("/api/recordings/{recording_id}")
 async def delete_recording(recording_id: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.delete(
-            f"{SUPABASE_URL}/rest/v1/recordings?id=eq.{recording_id}",
-            headers=sb_headers()
-        )
-    return JSONResponse(content={}, status_code=204 if r.status_code in (200,204) else r.status_code)
+    resp = await sb_request("DELETE", f"/rest/v1/recordings?id=eq.{recording_id}")
+    if resp.status_code in (200, 204):
+        return JSONResponse(content={}, status_code=204)
+    return resp
