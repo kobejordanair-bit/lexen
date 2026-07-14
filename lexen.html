@@ -395,6 +395,7 @@
     }
     .fc-btn:active { transform: scale(0.96); }
     .fc-btn:hover { filter: brightness(1.12); }
+    .fc-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; transform: none; }
     .fc-btn small { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; opacity: 0.75; font-weight: normal; }
     .fc-btn.again { background: #c0392b; color: white; }
     .fc-btn.seen  { background: #7f8c8d; color: white; }
@@ -2097,15 +2098,26 @@ async function deleteRecording(recordingId, wordId) {
 }
 
 async function rateFC(rating) {
+  const buttons = document.querySelectorAll('#fc-btns .fc-btn');
+  buttons.forEach(b => b.disabled = true);
+
   stopRecordingIfActive();
   const card = fcQueue[fcIndex];
   const updated = srsUpdate({ ...card }, rating);
-  await dbPut('srs_cards', updated);
-  await dbPut('study_log', {
-    date: new Date().toISOString().split('T')[0],
-    wordId: card.wordId,
-    rating,
-  });
+
+  try {
+    await dbPut('srs_cards', updated);
+    await dbPut('study_log', {
+      date: new Date().toISOString().split('T')[0],
+      wordId: card.wordId,
+      rating,
+    });
+  } catch (e) {
+    showToast('儲存失敗，請檢查網路連線後重試：' + e.message, 4000);
+    buttons.forEach(b => b.disabled = false);
+    return;
+  }
+
   fcIndex++;
   renderFC();
 }
