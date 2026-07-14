@@ -66,6 +66,13 @@ async def upsert_passage(request: Request):
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
     return await sb_request("POST", "/rest/v1/passages", headers=h, json=body)
 
+@app.delete("/api/passages/{passage_id}")
+async def delete_passage(passage_id: str):
+    resp = await sb_request("DELETE", f"/rest/v1/passages?id=eq.{passage_id}")
+    if resp.status_code in (200, 204):
+        return JSONResponse(content={}, status_code=204)
+    return resp
+
 # ── Vocabulary ────────────────────────────────────────────────────────────────
 @app.get("/api/vocabulary")
 async def get_vocabulary():
@@ -76,6 +83,16 @@ async def upsert_vocabulary(request: Request):
     body = await request.json()
     h = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
     return await sb_request("POST", "/rest/v1/vocabulary", headers=h, json=body)
+
+@app.delete("/api/vocabulary/{word_id}")
+async def delete_vocabulary(word_id: str):
+    # Cascade-delete the SRS card so the flashcard queue never references a
+    # vocabulary row that no longer exists.
+    await sb_request("DELETE", f"/rest/v1/srs_cards?word_id=eq.{word_id}")
+    resp = await sb_request("DELETE", f"/rest/v1/vocabulary?id=eq.{word_id}")
+    if resp.status_code in (200, 204):
+        return JSONResponse(content={}, status_code=204)
+    return resp
 
 # ── SRS Cards ─────────────────────────────────────────────────────────────────
 @app.get("/api/srs_cards/{user_id}")
