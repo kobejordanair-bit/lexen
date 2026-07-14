@@ -879,7 +879,10 @@
     <div class="screen-inner" style="height:100%; padding-bottom:0;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
         <h2>單字庫</h2>
-        <span class="mono" style="font-size:0.8rem; color:var(--slate-light);" id="vocab-count-label"></span>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span class="mono" style="font-size:0.8rem; color:var(--slate-light);" id="vocab-count-label"></span>
+          <button class="btn btn-sm" onclick="openModal('modal-import-vocab')">＋ 匯入單字</button>
+        </div>
       </div>
       <div class="vocab-toolbar" style="flex-shrink:0;">
         <input type="text" id="vocab-search" placeholder="搜尋英文或中文…" oninput="renderVocab()">
@@ -1010,6 +1013,40 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="backToStep1()">← 重新貼上</button>
         <button class="btn" onclick="confirmImport()" id="import-confirm-btn">儲存全部</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Vocabulary -->
+<div class="modal-overlay" id="modal-import-vocab">
+  <div class="modal" style="max-width:680px;">
+    <!-- Step 1: input -->
+    <div id="import-vocab-step1">
+      <h2>匯入單字</h2>
+      <p style="font-size:0.82rem;color:var(--slate-light);margin-bottom:0.75rem;">
+        每行貼上一個英文詞彙或片語（也可用逗號分隔），AI 會自動補上中文翻譯、詞性與法律定義。
+      </p>
+      <textarea id="import-vocab-textarea" placeholder="例如：&#10;injunction&#10;plaintiff&#10;due process" style="min-height:180px;"></textarea>
+
+      <div id="import-vocab-spinner" class="spinner" style="margin:0.5rem 0;"></div>
+      <div id="import-vocab-status" style="font-size:0.8rem;color:var(--slate-light);min-height:1.2rem;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-vocab')" id="import-vocab-cancel-btn">取消</button>
+        <button class="btn" onclick="processImportVocab()" id="import-vocab-submit-btn">AI 分析 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: review & edit -->
+    <div id="import-vocab-step2" style="display:none;">
+      <h2>確認詞彙</h2>
+      <p style="font-size:0.82rem;color:var(--slate-light);margin-bottom:0.75rem;">
+        確認或修改內容後，按「儲存全部」。取消勾選可略過該詞彙。已存在單字庫的詞彙會自動略過。
+      </p>
+      <div id="import-vocab-review-list" style="display:flex;flex-direction:column;gap:0.6rem;max-height:55vh;overflow-y:auto;padding-right:0.5rem;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="backToImportVocabStep1()">← 重新貼上</button>
+        <button class="btn" onclick="confirmImportVocab()" id="import-vocab-confirm-btn">儲存全部</button>
       </div>
     </div>
   </div>
@@ -1491,6 +1528,130 @@ async function analyzeWordAI(word, context) {
 嚴格以 JSON 格式回傳：
 {"word":"${word}","pos":"詞性","zhTW":"繁中法律翻譯","legalDef":"法律定義（繁中）","enDef":"英文定義","tags":["領域"],"difficulty":3,"relatedTerms":[]}`;
   return await gemini(prompt);
+}
+
+async function batchAnalyzeVocab(words) {
+  const prompt = `你是台灣律師/司法官考試法學英文專家。所有中文翻譯與定義必須嚴格採用現行中華民國法典用語（民法、刑法、刑事訴訟法、民事訴訟法、行政法等），不得使用一般語文翻譯或中國大陸法律用語。
+
+請對以下每一個法學英文詞彙／片語進行分析。詞彙清單（依序對應輸出陣列順序，不可增減、調換或合併）：
+${words.map((w, i) => `${i + 1}. ${w}`).join('\n')}
+
+請對每個詞彙找出清單內其他語義相近的詞彙（relatedTerms，填英文原詞，僅限清單內的詞彙，找不到則留空陣列）。
+
+嚴格以 JSON 陣列格式回傳，不加任何 markdown 或說明文字，陣列長度需與輸入詞彙數量相同且順序一致：
+[{"word":"詞彙原文","pos":"詞性","zhTW":"繁中法律翻譯","legalDef":"法律定義（繁中2-3句）","enDef":"English legal definition","tags":["領域標籤"],"difficulty":3,"relatedTerms":[]}]`;
+  return await gemini(prompt);
+}
+
+// ── Bulk vocabulary import ──────────────────────────────────────────────────
+let importVocabPendingResult = null;
+
+async function processImportVocab() {
+  const raw = $('import-vocab-textarea').value.trim();
+  if (!raw) { showToast('請貼上要匯入的單字'); return; }
+
+  const words = [...new Set(raw.split(/[\n,、]+/).map(w => w.trim()).filter(Boolean))];
+  if (words.length === 0) { showToast('請貼上要匯入的單字'); return; }
+
+  const spinner = $('import-vocab-spinner');
+  const status  = $('import-vocab-status');
+  const submit  = $('import-vocab-submit-btn');
+  const cancel  = $('import-vocab-cancel-btn');
+
+  spinner.style.display = 'block';
+  submit.disabled = cancel.disabled = true;
+  status.textContent = `AI 分析 ${words.length} 個詞彙中，請稍候…`;
+
+  try {
+    const result = await batchAnalyzeVocab(words);
+    const items = Array.isArray(result) ? result : (result.vocabulary || []);
+    if (items.length === 0) {
+      status.textContent = 'AI 未能解析任何詞彙，請確認內容後重試。';
+      return;
+    }
+    importVocabPendingResult = items;
+    $('import-vocab-review-list').innerHTML = items.map((v, i) => `
+      <div style="border:1px solid var(--border);border-radius:5px;padding:0.75rem;background:rgba(255,255,255,0.02);display:flex;gap:0.6rem;align-items:flex-start;">
+        <input type="checkbox" id="vocrow-inc-${i}" checked style="margin-top:0.5rem;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:0.4rem;">
+          <div class="field-row">
+            <input type="text" id="vocrow-word-${i}" value="${escAttr(v.word||'')}" placeholder="詞彙" style="flex:1.2;font-weight:700;">
+            <input type="text" id="vocrow-pos-${i}" value="${escAttr(v.pos||'')}" placeholder="詞性" style="width:90px;">
+            <input type="number" id="vocrow-diff-${i}" value="${v.difficulty||3}" min="1" max="5" style="width:60px;">
+          </div>
+          <input type="text" id="vocrow-zh-${i}" value="${escAttr(v.zhTW||'')}" placeholder="繁體中文翻譯" style="width:100%;">
+          <textarea id="vocrow-def-${i}" placeholder="法律定義" style="min-height:50px;width:100%;">${escHTML(v.legalDef||'')}</textarea>
+        </div>
+      </div>
+    `).join('');
+    $('import-vocab-step1').style.display = 'none';
+    $('import-vocab-step2').style.display = 'block';
+  } catch (e) {
+    status.textContent = '分析失敗：' + e.message;
+    console.error(e);
+  } finally {
+    spinner.style.display = 'none';
+    submit.disabled = cancel.disabled = false;
+  }
+}
+
+async function confirmImportVocab() {
+  if (!importVocabPendingResult) return;
+  const confirmBtn = $('import-vocab-confirm-btn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '儲存中…';
+
+  try {
+    let added = 0, skipped = 0;
+    for (let i = 0; i < importVocabPendingResult.length; i++) {
+      const incEl = $(`vocrow-inc-${i}`);
+      if (!incEl || !incEl.checked) continue;
+      const word = $(`vocrow-word-${i}`).value.trim();
+      if (!word) continue;
+      const wordId = normalizeId(word);
+      const existing = await dbGet('vocabulary', wordId);
+      if (existing) { skipped++; continue; }
+
+      const original = importVocabPendingResult[i] || {};
+      await dbPut('vocabulary', {
+        id: wordId, word,
+        pos: $(`vocrow-pos-${i}`).value.trim(),
+        zhTW: $(`vocrow-zh-${i}`).value.trim(),
+        legalDef: $(`vocrow-def-${i}`).value.trim(),
+        enDef: original.enDef || '',
+        tags: original.tags || [],
+        difficulty: parseInt($(`vocrow-diff-${i}`).value, 10) || 3,
+        relatedTerms: original.relatedTerms || [],
+        sourceIds: [],
+        createdAt: Date.now()
+      });
+      await dbPut('srs_cards', {
+        wordId, status: 'new', interval: 0, easeFactor: 2.5,
+        nextReview: Date.now(), lastReview: null, reps: 0, lapses: 0
+      });
+      added++;
+    }
+
+    showToast(`已匯入 ${added} 個新詞彙${skipped ? `，略過 ${skipped} 個已存在` : ''}`);
+    closeModal('modal-import-vocab');
+    backToImportVocabStep1();
+    renderHome();
+    if ($('screen-vocab').classList.contains('active')) renderVocab();
+  } catch (e) {
+    showToast('儲存失敗：' + e.message);
+    console.error(e);
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = '儲存全部';
+  }
+}
+
+function backToImportVocabStep1() {
+  $('import-vocab-step2').style.display = 'none';
+  $('import-vocab-step1').style.display = 'block';
+  $('import-vocab-textarea').value = '';
+  $('import-vocab-status').textContent = '';
+  importVocabPendingResult = null;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
