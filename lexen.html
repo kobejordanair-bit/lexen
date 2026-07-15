@@ -2060,9 +2060,22 @@ async function toggleRecording(prefix = 'fc') {
 
 function stopRecordingIfActive() {
   if (recMediaRecorder && recMediaRecorder.state === 'recording') {
-    recMediaRecorder.stop();
+    // Wait for onstop to actually finish before the caller proceeds, so a
+    // fast "下一個"/rating click can't switch words mid-stop and have the
+    // async onstop handler tag the recording to the wrong word afterward.
+    return new Promise(resolve => {
+      const rec = recMediaRecorder;
+      const originalOnStop = rec.onstop;
+      rec.onstop = (e) => {
+        if (originalOnStop) originalOnStop(e);
+        recObjectURL = null;
+        resolve();
+      };
+      rec.stop();
+    });
   }
   recObjectURL = null;
+  return Promise.resolve();
 }
 
 // ── Recording persistence ────────────────────────────────────────────────────
@@ -2195,14 +2208,16 @@ async function openRecordWordModal(wordId) {
   openModal('modal-record-word');
 }
 
-function nextRecordWord() {
-  stopRecordingIfActive();
+async function nextRecordWord() {
+  await stopRecordingIfActive();
+  recCurrentBlob = null; // discard any unsaved take from the word we're leaving
   if (rrQueueIndex < 0 || rrQueueIndex >= rrQueue.length - 1) return;
   openRecordWordModal(rrQueue[rrQueueIndex + 1]);
 }
 
-function closeRecordWordModal() {
-  stopRecordingIfActive();
+async function closeRecordWordModal() {
+  await stopRecordingIfActive();
+  recCurrentBlob = null;
   closeModal('modal-record-word');
   renderRecordingRoom();
 }
