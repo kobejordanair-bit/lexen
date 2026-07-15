@@ -122,6 +122,12 @@ async def insert_study_log(request: Request):
     return await sb_request("POST", "/rest/v1/study_log", json=body)
 
 # ── Recordings ────────────────────────────────────────────────────────────────
+@app.get("/api/recordings")
+async def list_recordings():
+    # Lightweight overview (no audio_data) so the recording room can show
+    # which words already have a recording without downloading every clip.
+    return await sb_request("GET", "/rest/v1/recordings?select=id,word_id,user_id,created_at")
+
 @app.get("/api/recordings/{word_id}")
 async def get_recordings(word_id: str):
     return await sb_request("GET", f"/rest/v1/recordings?word_id=eq.{word_id}&select=*&order=created_at.desc")

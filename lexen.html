@@ -761,6 +761,7 @@
     <button class="nav-tab" data-screen="quiz">做題模式</button>
     <button class="nav-tab" data-screen="vocab">單字庫</button>
     <button class="nav-tab" data-screen="weakness">弱點強化</button>
+    <button class="nav-tab" data-screen="recording">錄音區</button>
   </div>
   <div class="nav-right">
     <span class="nav-stat">🔥 <strong id="nav-streak">0</strong> 天</span>
@@ -983,6 +984,28 @@
     </div>
   </div>
 
+  <!-- ── RECORDING ROOM ── -->
+  <div id="screen-recording" class="screen">
+    <div class="screen-inner">
+      <div class="weakness-header">
+        <div>
+          <h2>錄音區</h2>
+          <p style="color:var(--slate-light); font-size:0.85rem; margin-top:0.25rem;">為單字錄下正確發音，其他人複習這個字時就能聽到</p>
+        </div>
+        <span class="mono" style="font-size:0.8rem; color:var(--slate-light);" id="rr-count-label"></span>
+      </div>
+      <div class="vocab-toolbar">
+        <input type="text" id="rr-search" placeholder="搜尋英文或中文…" oninput="renderRecordingRoom()">
+        <select id="rr-filter" onchange="renderRecordingRoom()">
+          <option value="all">全部</option>
+          <option value="unrecorded">尚未錄音</option>
+          <option value="recorded">已有錄音</option>
+        </select>
+      </div>
+      <div class="weakness-list" id="rr-list"></div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ═══ MODALS ═══ -->
@@ -1173,6 +1196,24 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-edit-passage')">取消</button>
       <button class="btn" onclick="saveEditPassage()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Word -->
+<div class="modal-overlay" id="modal-record-word">
+  <div class="modal" style="max-width:520px;">
+    <div class="wdm-word" id="rr-modal-word"></div>
+    <div class="wdm-zh" id="rr-modal-zh" style="margin-bottom:1rem;"></div>
+    <div class="fc-recorder" id="rr-recorder" style="max-width:100%;">
+      <button class="btn btn-ghost btn-sm" id="rr-rec-btn" onclick="toggleRecording('rr')">⏺ 錄音</button>
+      <audio id="rr-playback" controls style="flex:1;height:32px;display:none;"></audio>
+      <button class="btn btn-sm" id="rr-save-rec-btn" style="display:none;flex-shrink:0;" onclick="saveRecording(rrCurrentWordId, 'rr')">💾 存檔</button>
+      <span id="rr-rec-status" style="font-size:0.75rem;color:var(--slate-light);"></span>
+    </div>
+    <div id="rr-saved-recordings" style="width:100%;max-width:100%;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeRecordWordModal()">關閉</button>
     </div>
   </div>
 </div>
@@ -1771,6 +1812,7 @@ function switchScreen(id) {
   if (id === 'quiz')      renderQuizList();
   if (id === 'vocab')     renderVocab();
   if (id === 'weakness')  renderWeakness();
+  if (id === 'recording') renderRecordingRoom();
 }
 
 document.querySelectorAll('.nav-tab').forEach(btn => {
@@ -1976,8 +2018,8 @@ function flipFC() {
   $('fc-btns').style.display = 'block';
 }
 
-async function toggleRecording() {
-  const btn = $('fc-rec-btn');
+async function toggleRecording(prefix = 'fc') {
+  const btn = $(`${prefix}-rec-btn`);
   if (!btn) return;
   if (recMediaRecorder && recMediaRecorder.state === 'recording') {
     recMediaRecorder.stop();
@@ -1994,21 +2036,21 @@ async function toggleRecording() {
       if (recObjectURL) URL.revokeObjectURL(recObjectURL);
       recObjectURL = URL.createObjectURL(blob);
       recCurrentBlob = blob;
-      const audio = $('fc-playback');
+      const audio = $(`${prefix}-playback`);
       if (audio) { audio.src = recObjectURL; audio.style.display = 'block'; }
-      const b = $('fc-rec-btn');
+      const b = $(`${prefix}-rec-btn`);
       if (b) { b.textContent = '⏺ 重錄'; b.style.background = ''; }
-      const s = $('fc-rec-status');
+      const s = $(`${prefix}-rec-status`);
       if (s) { s.innerHTML = ''; }
-      const saveBtn = $('fc-save-rec-btn');
+      const saveBtn = $(`${prefix}-save-rec-btn`);
       if (saveBtn) { saveBtn.style.display = 'inline-flex'; saveBtn.disabled = false; saveBtn.textContent = '💾 存檔'; }
     };
     recMediaRecorder.start();
     btn.textContent = '⏹ 停止';
     btn.style.background = 'rgba(184,76,42,0.25)';
-    const status = $('fc-rec-status');
+    const status = $(`${prefix}-rec-status`);
     if (status) status.innerHTML = '<span class="fc-rec-dot"></span> 錄音中';
-    const audio = $('fc-playback');
+    const audio = $(`${prefix}-playback`);
     if (audio) audio.style.display = 'none';
   } catch(e) {
     showToast('無法存取麥克風：' + e.message);
@@ -2034,9 +2076,9 @@ function blobToDataURL(blob) {
   });
 }
 
-async function saveRecording(wordId) {
+async function saveRecording(wordId, prefix = 'fc') {
   if (!recCurrentBlob) return;
-  const btn = $('fc-save-rec-btn');
+  const btn = $(`${prefix}-save-rec-btn`);
   btn.disabled = true;
   btn.textContent = '儲存中…';
   try {
@@ -2054,7 +2096,7 @@ async function saveRecording(wordId) {
     btn.textContent = '✓ 已儲存';
     recCurrentBlob = null;
     const recs = await loadRecordingsForWord(wordId);
-    renderSavedRecordings(recs);
+    renderSavedRecordings(recs, prefix);
   } catch(e) {
     showToast('儲存失敗：' + e.message);
     btn.disabled = false;
@@ -2068,8 +2110,8 @@ async function loadRecordingsForWord(wordId) {
   } catch(_) { return []; }
 }
 
-function renderSavedRecordings(recs) {
-  const container = $('fc-saved-recordings');
+function renderSavedRecordings(recs, prefix = 'fc') {
+  const container = $(`${prefix}-saved-recordings`);
   if (!container || !recs || recs.length === 0) {
     if (container) container.innerHTML = '';
     return;
@@ -2083,18 +2125,73 @@ function renderSavedRecordings(recs) {
           <audio controls src="${r.audio_data}" style="flex:1;height:28px;"></audio>
           <span style="font-size:0.7rem;color:var(--slate-light);flex-shrink:0;">${fmtDate(new Date(r.created_at).getTime())}</span>
           ${r.user_id === currentUser.id
-            ? `<button class="btn btn-ghost btn-sm" style="padding:0.15rem 0.45rem;color:var(--rust);flex-shrink:0;" onclick="deleteRecording('${r.id}','${r.word_id}')">×</button>`
+            ? `<button class="btn btn-ghost btn-sm" style="padding:0.15rem 0.45rem;color:var(--rust);flex-shrink:0;" onclick="deleteRecording('${r.id}','${r.word_id}','${prefix}')">×</button>`
             : ''}
         </div>`).join('')}
     </div>`;
 }
 
-async function deleteRecording(recordingId, wordId) {
+async function deleteRecording(recordingId, wordId, prefix = 'fc') {
   try {
     await apiFetch(`/api/recordings/${recordingId}`, { method: 'DELETE' });
     const recs = await loadRecordingsForWord(wordId);
-    renderSavedRecordings(recs);
+    renderSavedRecordings(recs, prefix);
   } catch(e) { showToast('刪除失敗：' + e.message); }
+}
+
+// ── Recording room (browse the whole vocab list, record any word directly) ──
+let rrCurrentWordId = null;
+
+async function renderRecordingRoom() {
+  const [vocab, allRecs] = await Promise.all([dbGetAll('vocabulary'), apiFetch('/api/recordings')]);
+
+  const countByWord = {};
+  allRecs.forEach(r => { countByWord[r.word_id] = (countByWord[r.word_id] || 0) + 1; });
+
+  const search = $('rr-search').value.toLowerCase();
+  const filter = $('rr-filter').value;
+
+  let items = vocab.map(v => ({ ...v, _recCount: countByWord[v.id] || 0 }));
+  if (search) items = items.filter(i => i.word.toLowerCase().includes(search) || (i.zhTW || '').includes(search));
+  if (filter === 'unrecorded') items = items.filter(i => i._recCount === 0);
+  if (filter === 'recorded')   items = items.filter(i => i._recCount > 0);
+  items.sort((a, b) => (a._recCount - b._recCount) || a.word.localeCompare(b.word));
+
+  $('rr-count-label').textContent = `${items.length} / ${vocab.length} 個詞彙`;
+  $('rr-list').innerHTML = items.map(v => `
+    <div class="weakness-row" style="cursor:pointer;" onclick="openRecordWordModal('${v.id}')">
+      <div class="w-word-info">
+        <div class="w-word-en">${v.word}</div>
+        <div class="w-word-zh">${v.zhTW}</div>
+      </div>
+      <span class="badge ${v._recCount > 0 ? 'badge-mastered' : 'badge-new'}">${v._recCount > 0 ? `✓ 已錄 ${v._recCount}` : '未錄音'}</span>
+    </div>
+  `).join('');
+}
+
+async function openRecordWordModal(wordId) {
+  const v = await dbGet('vocabulary', wordId);
+  if (!v) return;
+  rrCurrentWordId = wordId;
+
+  $('rr-modal-word').textContent = v.word;
+  $('rr-modal-zh').textContent = v.zhTW;
+  $('rr-rec-btn').textContent = '⏺ 錄音';
+  $('rr-rec-btn').style.background = '';
+  $('rr-playback').style.display = 'none';
+  $('rr-save-rec-btn').style.display = 'none';
+  $('rr-rec-status').innerHTML = '';
+  recCurrentBlob = null;
+
+  const recs = await loadRecordingsForWord(wordId);
+  renderSavedRecordings(recs, 'rr');
+  openModal('modal-record-word');
+}
+
+function closeRecordWordModal() {
+  stopRecordingIfActive();
+  closeModal('modal-record-word');
+  renderRecordingRoom();
 }
 
 async function rateFC(rating) {
