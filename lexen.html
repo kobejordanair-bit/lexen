@@ -1214,6 +1214,7 @@
     <div id="rr-saved-recordings" style="width:100%;max-width:100%;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeRecordWordModal()">關閉</button>
+      <button class="btn btn-sm" id="rr-next-btn" style="display:none;" onclick="nextRecordWord()">下一個 →</button>
     </div>
   </div>
 </div>
@@ -2141,6 +2142,8 @@ async function deleteRecording(recordingId, wordId, prefix = 'fc') {
 
 // ── Recording room (browse the whole vocab list, record any word directly) ──
 let rrCurrentWordId = null;
+let rrQueue = [];       // ordered word ids from the last render, for "下一個"
+let rrQueueIndex = -1;
 
 async function renderRecordingRoom() {
   const [vocab, allRecs] = await Promise.all([dbGetAll('vocabulary'), apiFetch('/api/recordings')]);
@@ -2156,6 +2159,8 @@ async function renderRecordingRoom() {
   if (filter === 'unrecorded') items = items.filter(i => i._recCount === 0);
   if (filter === 'recorded')   items = items.filter(i => i._recCount > 0);
   items.sort((a, b) => (a._recCount - b._recCount) || a.word.localeCompare(b.word));
+
+  rrQueue = items.map(v => v.id);
 
   $('rr-count-label').textContent = `${items.length} / ${vocab.length} 個詞彙`;
   $('rr-list').innerHTML = items.map(v => `
@@ -2173,6 +2178,7 @@ async function openRecordWordModal(wordId) {
   const v = await dbGet('vocabulary', wordId);
   if (!v) return;
   rrCurrentWordId = wordId;
+  rrQueueIndex = rrQueue.indexOf(wordId);
 
   $('rr-modal-word').textContent = v.word;
   $('rr-modal-zh').textContent = v.zhTW;
@@ -2181,11 +2187,18 @@ async function openRecordWordModal(wordId) {
   $('rr-playback').style.display = 'none';
   $('rr-save-rec-btn').style.display = 'none';
   $('rr-rec-status').innerHTML = '';
+  $('rr-next-btn').style.display = (rrQueueIndex >= 0 && rrQueueIndex < rrQueue.length - 1) ? 'inline-flex' : 'none';
   recCurrentBlob = null;
 
   const recs = await loadRecordingsForWord(wordId);
   renderSavedRecordings(recs, 'rr');
   openModal('modal-record-word');
+}
+
+function nextRecordWord() {
+  stopRecordingIfActive();
+  if (rrQueueIndex < 0 || rrQueueIndex >= rrQueue.length - 1) return;
+  openRecordWordModal(rrQueue[rrQueueIndex + 1]);
 }
 
 function closeRecordWordModal() {
