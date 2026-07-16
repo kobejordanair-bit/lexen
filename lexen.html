@@ -1433,7 +1433,7 @@ async function dbGetAll_cards() {
     interval: c.interval, easeFactor: c.ease_factor,
     nextReview: c.next_review ? new Date(c.next_review).getTime() : Date.now(),
     lastReview: c.last_review ? new Date(c.last_review).getTime() : null,
-    reps: c.reps, lapses: c.lapses
+    reps: c.reps, lapses: c.lapses, notes: c.notes || ''
   }));
   return _cache.srs_cards;
 }
@@ -1992,6 +1992,11 @@ async function renderFC() {
         <p class="fc-def">${vocab.legalDef}</p>
       </div>
     </div>
+    <div class="fc-notes" style="width:100%; max-width:620px;">
+      <div style="font-size:0.78rem;color:var(--slate-light);margin-bottom:0.4rem;font-family:'JetBrains Mono',monospace;">📝 我的筆記</div>
+      <textarea id="fc-notes-input" placeholder="寫下你自己的記憶技巧、例句、易混淆點…" style="min-height:70px;font-size:0.85rem;" onblur="saveCardNotes('${card.wordId}')">${escHTML(card.notes || '')}</textarea>
+      <div id="fc-notes-status" style="font-size:0.72rem;color:var(--slate-light);margin-top:0.25rem;min-height:1rem;"></div>
+    </div>
     <div id="fc-btns" style="display:none; width:100%; max-width:620px;">
       <div class="fc-buttons">
         <button class="fc-btn again" onclick="rateFC('again')">第一次背<small>${previewInterval(card,'again')}</small></button>
@@ -2265,6 +2270,30 @@ async function rateFC(rating) {
 
   fcIndex++;
   renderFC();
+}
+
+async function saveCardNotes(wordId) {
+  const textarea = $('fc-notes-input');
+  const status = $('fc-notes-status');
+  if (!textarea) return;
+  const notes = textarea.value;
+  if (status) status.textContent = '儲存中…';
+  try {
+    // Partial upsert: only user_id/word_id/notes are sent, so this only
+    // ever touches the notes column and never overwrites the SRS fields
+    // that rateFC() manages separately.
+    await apiFetch('/api/srs_cards', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: currentUser.id, word_id: wordId, notes })
+    });
+    _cache.srs_cards = null;
+    if (status) {
+      status.textContent = '已儲存';
+      setTimeout(() => { if ($('fc-notes-status')) $('fc-notes-status').textContent = ''; }, 1500);
+    }
+  } catch (e) {
+    if (status) status.textContent = '筆記儲存失敗：' + e.message;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
