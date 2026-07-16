@@ -2136,13 +2136,33 @@ function renderSavedRecordings(recs, prefix = 'fc') {
       ${recs.map(r => `
         <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
           <span title="${r.user_id}" style="font-size:1.1rem;flex-shrink:0;">${AVATARS[r.user_id] || '👤'}</span>
-          <audio controls src="${r.audio_data}" style="flex:1;height:28px;"></audio>
+          <button class="btn btn-ghost btn-sm" id="loop-btn-${r.id}" style="padding:0.2rem 0.45rem;flex-shrink:0;" onclick="toggleRecordingLoop('${r.id}')" title="重複播放">🔁</button>
+          <audio id="rec-audio-${r.id}" controls src="${r.audio_data}" style="flex:1;height:28px;"></audio>
           <span style="font-size:0.7rem;color:var(--slate-light);flex-shrink:0;">${fmtDate(new Date(r.created_at).getTime())}</span>
           ${r.user_id === currentUser.id
             ? `<button class="btn btn-ghost btn-sm" style="padding:0.15rem 0.45rem;color:var(--rust);flex-shrink:0;" onclick="deleteRecording('${r.id}','${r.word_id}','${prefix}')">×</button>`
             : ''}
         </div>`).join('')}
     </div>`;
+}
+
+function toggleRecordingLoop(recordingId) {
+  const audio = $(`rec-audio-${recordingId}`);
+  const btn = $(`loop-btn-${recordingId}`);
+  if (!audio || !btn) return;
+  audio.loop = !audio.loop;
+  if (audio.loop) {
+    btn.style.background = 'var(--gold-dim)';
+    btn.style.borderColor = 'var(--gold)';
+    btn.style.color = 'var(--gold)';
+    btn.title = '重複播放中（點擊關閉）';
+    if (audio.paused) audio.play().catch(() => {});
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = '重複播放';
+  }
 }
 
 async function deleteRecording(recordingId, wordId, prefix = 'fc') {
